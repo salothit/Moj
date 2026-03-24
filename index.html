@@ -8,7 +8,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MOJ">
 <meta name="theme-color" content="#1a1f2e">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,...">
 <meta name="description" content="MOJ — GST Accounting System for Textile Business">
 <title>MOJ — Accounting</title>
 
@@ -962,25 +961,152 @@ tr[style*="background:#fff5f5"] td {
 <!-- ════════ LOGIN PAGE ════════ -->
 <div id="loginPage" class="login-wrap">
   <div class="login-card">
-    <h2 style="font-size:42px;font-weight:900;letter-spacing:6px;font-style:italic;background:linear-gradient(135deg,#2c3e50,#e67e22,#e74c3c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px">MOJ</h2>
-    <p style="letter-spacing:3px;font-size:11px;color:#aaa;text-transform:uppercase;font-weight:bold">Accounting System</p>
+    <h2 style="font-size:48px;font-weight:900;letter-spacing:6px;font-style:italic;background:linear-gradient(135deg,#2c3e50,#e67e22,#e74c3c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;text-align:center">MOJ</h2>
+    <p style="letter-spacing:3px;font-size:11px;color:#aaa;text-transform:uppercase;font-weight:bold;text-align:center;margin-bottom:20px">Accounting System</p>
+
+    <!-- LOGIN FORM -->
+    <div id="loginForm">
+      <div class="form-group">
+        <label>Select Firm</label>
+        <select id="loginUser" style="font-weight:600"></select>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div id="loginErr" class="alert alert-danger" style="display:none"></div>
+      <button class="btn btn-blue btn-full" onclick="doLogin()" style="margin-bottom:10px">Login</button>
+      <button onclick="showRegisterForm()" style="width:100%;background:none;border:1.5px solid var(--md-outline);border-radius:999px;padding:10px;font-size:13px;font-weight:600;color:var(--md-on-surface-variant);cursor:pointer;font-family:var(--font-ui)">+ Create New Firm</button>
+    </div>
+
+    <!-- REGISTER NEW FIRM FORM -->
+    <div id="registerForm" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+        <button onclick="showLoginForm()" style="background:var(--md-surface-variant);border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;font-family:var(--font-ui)">←</button>
+        <span style="font-weight:700;font-size:15px">Create New Firm</span>
+      </div>
+
+      <div style="background:var(--md-primary-container);border-radius:var(--md-radius-md);padding:10px 12px;margin-bottom:14px;font-size:12px;color:#92600a">
+        📋 Fill your business details — these will appear on <b>every bill & invoice</b> automatically!
+      </div>
+
+      <div class="form-group">
+        <label>🏢 Firm / Business Name *</label>
+        <input type="text" id="reg_firm" placeholder="e.g. Parshwa Fabrics">
+      </div>
+      <div class="form-group">
+        <label>👤 Owner Name</label>
+        <input type="text" id="reg_owner" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label>📍 Shop Address *</label>
+        <textarea id="reg_address" placeholder="e.g. Shop No. 5, Main Market, Surat - 395001" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--md-outline);border-radius:var(--md-radius-md);font-size:13px;font-family:var(--font-ui);resize:none"></textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div class="form-group" style="flex:1;margin-bottom:10px">
+          <label>📞 Phone 1 *</label>
+          <input type="tel" id="reg_phone" placeholder="Mobile number">
+        </div>
+        <div class="form-group" style="flex:1;margin-bottom:10px">
+          <label>📞 Phone 2</label>
+          <input type="tel" id="reg_phone2" placeholder="Optional">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>💼 Business Tagline</label>
+        <input type="text" id="reg_tagline" placeholder="e.g. Wholesalers of All Kind of Fabrics">
+      </div>
+      <hr style="margin:10px 0">
+      <div class="form-group">
+        <label>🔒 Set Password *</label>
+        <input type="password" id="reg_pass" placeholder="Min 4 characters">
+      </div>
+      <div class="form-group">
+        <label>🔒 Confirm Password *</label>
+        <input type="password" id="reg_pass2" placeholder="Repeat password">
+      </div>
+      <div id="regErr" class="alert alert-danger" style="display:none"></div>
+      <button class="btn btn-green btn-full" onclick="registerFirm()" style="margin-bottom:10px">🏢 Create Firm</button>
+      <p style="text-align:center;font-size:11px;color:var(--muted)">Max 10 firms allowed per device</p>
+    </div>
+
+    <!-- MANAGE FIRMS (shown after login) -->
+    <div id="manageFirmPanel" style="display:none;margin-top:12px;border-top:1px solid var(--md-outline);padding-top:12px">
+      <button onclick="showManageFirms()" style="width:100%;background:none;border:none;font-size:12px;color:var(--md-on-surface-muted);cursor:pointer;font-family:var(--font-ui)">⚙️ Manage Firms</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANAGE FIRMS MODAL -->
+<div id="manageFirmsModal" class="modal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal('manageFirmsModal')">×</button>
+    <h3>⚙️ Manage Firms</h3>
+    <div id="firmListDiv"></div>
+    <hr style="margin:12px 0">
+    <button class="btn btn-green btn-full" onclick="document.getElementById('manageFirmsModal').classList.remove('open');showRegisterForm()">+ Add New Firm</button>
+  </div>
+</div>
+
+<!-- EDIT FIRM MODAL -->
+<div id="editFirmModal" class="modal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal('editFirmModal')">×</button>
+    <h3>✏️ Edit Firm Profile</h3>
+
+    <div style="background:var(--md-primary-container);border-radius:var(--md-radius-md);padding:10px 12px;margin-bottom:12px;font-size:12px;color:#92600a">
+      📋 These details appear on <b>every bill, invoice & DC</b> automatically!
+    </div>
+
     <div class="form-group">
-      <label>Select User</label>
-      <select id="loginUser">
-        <option>PADMAVATI CREATION</option>
-        <option>CHINTAMANI SAREE</option>
-        <option>MOJ CREATIVE</option>
-      </select>
+      <label>🏢 Firm Name</label>
+      <input type="text" id="edit_firm_name">
     </div>
     <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="loginPass" placeholder="Enter password">
+      <label>👤 Owner Name</label>
+      <input type="text" id="edit_firm_owner">
     </div>
-    <div id="loginErr" class="alert alert-danger" style="display:none"></div>
-    <button class="btn btn-blue btn-full" onclick="doLogin()">Login</button>
-    <p style="text-align:center;margin-top:12px;font-size:11px;color:var(--muted)">
-      Contact admin for your password.
-    </p>
+    <div class="form-group">
+      <label>📍 Shop Address</label>
+      <textarea id="edit_firm_addr" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--md-outline);border-radius:var(--md-radius-md);font-size:13px;font-family:var(--font-ui);resize:none" placeholder="Full shop address"></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="form-group" style="flex:1;margin-bottom:10px">
+        <label>📞 Phone 1</label>
+        <input type="tel" id="edit_firm_phone" placeholder="Primary mobile">
+      </div>
+      <div class="form-group" style="flex:1;margin-bottom:10px">
+        <label>📞 Phone 2</label>
+        <input type="tel" id="edit_firm_phone2" placeholder="Optional">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>💼 Business Tagline</label>
+      <input type="text" id="edit_firm_tagline" placeholder="e.g. Wholesalers of All Kind of Sarees">
+    </div>
+    <div class="form-group">
+      <label>📧 Email (Optional)</label>
+      <input type="email" id="edit_firm_email" placeholder="your@email.com">
+    </div>
+
+    <hr style="margin:12px 0">
+    <div style="background:var(--md-surface-variant);border-radius:var(--md-radius-md);padding:12px;margin-bottom:10px">
+      <p style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--md-on-surface-variant)">🔒 Change Password (optional)</p>
+      <div class="form-group" style="margin-bottom:8px">
+        <label>Current Password</label>
+        <input type="password" id="edit_old_pass" placeholder="Enter current password">
+      </div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label>New Password</label>
+        <input type="password" id="edit_new_pass" placeholder="New password">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Confirm New Password</label>
+        <input type="password" id="edit_new_pass2" placeholder="Repeat new password">
+      </div>
+    </div>
+    <div id="editFirmErr" class="alert alert-danger" style="display:none"></div>
+    <button class="btn btn-blue btn-full" onclick="saveEditFirm()">💾 Save Changes</button>
   </div>
 </div>
 
@@ -1942,11 +2068,282 @@ Setup Opening Capital Structure
 // ════════════════════════════════════════
 let CU = ''; // current user key prefix
 
-const USERS = {
-  'PADMAVATI CREATION':'padma123',
-  'CHINTAMANI SAREE':'chinta123',
-  'MOJ CREATIVE':'moj123'
-};
+// ═══════════════════════════════════════════
+//  DYNAMIC FIRM MANAGEMENT (replaces hardcoded USERS)
+// ═══════════════════════════════════════════
+const MAX_FIRMS = 10;
+
+function getFirms(){
+  try{ return JSON.parse(localStorage.getItem('MOJ_FIRMS')||'null') || getDefaultFirms(); }
+  catch(e){ return getDefaultFirms(); }
+}
+
+function getDefaultFirms(){
+  const defaults = [
+    {id:'PADMAVATI_CREATION', name:'PADMAVATI CREATION', owner:'', pass:'padma123', fy:'2024-25',
+     address:'L-27, Basement, Bombay Market, Umarwada, Surat - 395010',
+     phone:'9426079540', phone2:'9328932532',
+     tagline:'MANUFACTURER & TRADERS OF FANCY AND DESIGNER CHANIYA CHOLI AND SAREES',
+     email:'', website:'', created: new Date().toISOString()},
+    {id:'CHINTAMANI_SAREE', name:'CHINTAMANI SAREE', owner:'', pass:'chinta123', fy:'2024-25',
+     address:'L-27, Upper, Bombay Market, Umarwada, Surat - 395010',
+     phone:'9426079540', phone2:'9328932532',
+     tagline:'Wholesalers All Kind of Sarees',
+     email:'', website:'', created: new Date().toISOString()},
+    {id:'MOJ_CREATIVE', name:'MOJ CREATIVE', owner:'', pass:'moj123', fy:'2024-25',
+     address:'', phone:'', phone2:'', tagline:'', email:'', website:'',
+     created: new Date().toISOString()},
+  ];
+  localStorage.setItem('MOJ_FIRMS', JSON.stringify(defaults));
+  return defaults;
+}
+
+// Get current firm's full profile
+function getFirmProfile(){
+  if(!CU) return {};
+  const f = getFirmById(CU);
+  return f || {};
+}
+
+// Helper to get firm address for bills
+function getMyAddress(){
+  const f = getFirmProfile();
+  return f.address || localStorage.getItem(CU+'_gst_addr') || '';
+}
+function getMyPhone(){
+  const f = getFirmProfile();
+  return f.phone || '';
+}
+function getMyPhone2(){
+  const f = getFirmProfile();
+  return f.phone2 || '';
+}
+function getMyTagline(){
+  const f = getFirmProfile();
+  return f.tagline || '';
+}
+function getMyEmail(){
+  const f = getFirmProfile();
+  return f.email || '';
+}
+function getMyCompanyName(){
+  const f = getFirmProfile();
+  return f.name || (CU ? CU.replace(/_/g,' ') : '');
+}
+
+function saveFirms(firms){
+  localStorage.setItem('MOJ_FIRMS', JSON.stringify(firms));
+  if(typeof _refreshUSERS==='function') _refreshUSERS();
+}
+
+function getFirmById(id){
+  return getFirms().find(f=>f.id===id);
+}
+
+// Build login dropdown from firms
+function populateLoginDropdown(){
+  const firms = getFirms();
+  const sel = document.getElementById('loginUser');
+  if(!sel) return;
+  sel.innerHTML = firms.map(f=>`<option value="${f.id}">${f.name}</option>`).join('');
+}
+
+// Show/hide forms
+function showRegisterForm(){
+  document.getElementById('loginForm').style.display='none';
+  document.getElementById('registerForm').style.display='block';
+  document.getElementById('reg_firm').value='';
+  document.getElementById('reg_owner').value='';
+  document.getElementById('reg_pass').value='';
+  document.getElementById('reg_pass2').value='';
+  document.getElementById('regErr').style.display='none';
+}
+
+function showLoginForm(){
+  document.getElementById('loginForm').style.display='block';
+  document.getElementById('registerForm').style.display='none';
+}
+
+function registerFirm(){
+  const name    = document.getElementById('reg_firm').value.trim();
+  const owner   = document.getElementById('reg_owner').value.trim();
+  const address = document.getElementById('reg_address') ? document.getElementById('reg_address').value.trim() : '';
+  const phone   = document.getElementById('reg_phone') ? document.getElementById('reg_phone').value.trim() : '';
+  const tagline = document.getElementById('reg_tagline') ? document.getElementById('reg_tagline').value.trim() : '';
+  const pass    = document.getElementById('reg_pass').value;
+  const pass2   = document.getElementById('reg_pass2').value;
+  const err     = document.getElementById('regErr');
+  err.style.display='none';
+
+  if(!name){ err.textContent='Enter firm name'; err.style.display='block'; return; }
+  if(pass.length < 4){ err.textContent='Password must be at least 4 characters'; err.style.display='block'; return; }
+  if(pass !== pass2){ err.textContent='Passwords do not match'; err.style.display='block'; return; }
+
+  const firms = getFirms();
+  if(firms.length >= MAX_FIRMS){ err.textContent='Maximum 10 firms allowed'; err.style.display='block'; return; }
+
+  const id = name.toUpperCase().replace(/[^A-Z0-9]/g,'_').replace(/__+/g,'_');
+  if(firms.find(f=>f.id===id)){ err.textContent='Firm with this name already exists'; err.style.display='block'; return; }
+
+  firms.push({
+    id, name: name.toUpperCase(), owner, pass,
+    address, phone, phone2:'', tagline, email:'',
+    fy: getCurrentFYLabel(), created: new Date().toISOString()
+  });
+  saveFirms(firms);
+  populateLoginDropdown();
+  const sel = document.getElementById('loginUser');
+  if(sel) sel.value = id;
+  showLoginForm();
+  mdToast('✅ Firm "'+name.toUpperCase()+'" created! Now login.');
+}
+
+function showManageFirms(){
+  const firms = getFirms();
+  const div = document.getElementById('firmListDiv');
+  div.innerHTML = firms.map(f=>`
+    <div style="border:1px solid var(--md-outline);border-radius:12px;margin-bottom:10px;overflow:hidden">
+      <div style="background:var(--md-surface-variant);padding:10px 12px;display:flex;align-items:center;gap:8px">
+        <div style="width:36px;height:36px;background:#1a1f2e;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#f0932b;flex-shrink:0">${f.name.charAt(0)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
+          ${f.owner?'<div style="font-size:11px;color:var(--md-on-surface-muted)">👤 '+f.owner+'</div>':''}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0">
+        <button onclick="openEditFirm('${f.id}')" style="padding:10px 6px;background:#fff;border:none;border-right:1px solid var(--md-outline);border-top:1px solid var(--md-outline);font-size:12px;font-weight:600;color:#2980b9;cursor:pointer;font-family:var(--font-ui)">✏️ Edit Name</button>
+        <button onclick="openResetPass('${f.id}')" style="padding:10px 6px;background:#fff;border:none;border-right:1px solid var(--md-outline);border-top:1px solid var(--md-outline);font-size:12px;font-weight:600;color:#f0932b;cursor:pointer;font-family:var(--font-ui)">🔑 Reset Pass</button>
+        ${firms.length>1?`<button onclick="deleteFirm('`+f.id+`')" style="padding:10px 6px;background:#fff;border:none;border-top:1px solid var(--md-outline);font-size:12px;font-weight:600;color:#e74c3c;cursor:pointer;font-family:var(--font-ui)">🗑️ Delete</button>`:'<div style="background:#f5f6fa;border-top:1px solid var(--md-outline);display:flex;align-items:center;justify-content:center;font-size:10px;color:#aaa">Only firm</div>'}
+      </div>
+    </div>`).join('');
+  document.getElementById('manageFirmsModal').classList.add('open');
+}
+
+// Reset Password (separate simple modal)
+let _resetPassFirmId = null;
+function openResetPass(id){
+  _resetPassFirmId = id;
+  const firm = getFirmById(id);
+  if(!firm) return;
+  document.getElementById('resetPassFirmName').textContent = firm.name;
+  document.getElementById('reset_new_pass').value='';
+  document.getElementById('reset_new_pass2').value='';
+  document.getElementById('resetPassErr').style.display='none';
+  document.getElementById('manageFirmsModal').classList.remove('open');
+  document.getElementById('resetPassModal').classList.add('open');
+}
+
+function saveResetPass(){
+  const firms = getFirms();
+  const idx = firms.findIndex(f=>f.id===_resetPassFirmId);
+  if(idx===-1) return;
+  const err = document.getElementById('resetPassErr');
+  err.style.display='none';
+  const np  = document.getElementById('reset_new_pass').value;
+  const np2 = document.getElementById('reset_new_pass2').value;
+  if(np.length < 4){ err.textContent='Password must be at least 4 characters'; err.style.display='block'; return; }
+  if(np !== np2){ err.textContent='Passwords do not match'; err.style.display='block'; return; }
+  firms[idx].pass = np;
+  saveFirms(firms);
+  document.getElementById('resetPassModal').classList.remove('open');
+  if(typeof mdToast==='function') mdToast('✅ Password changed for '+firms[idx].name+'!');
+  else alert('✅ Password changed for '+firms[idx].name+'!');
+}
+
+let _editingFirmId = null;
+function openEditFirm(id){
+  const firm = getFirmById(id);
+  if(!firm) return;
+  _editingFirmId = id;
+  const el = eid => document.getElementById(eid);
+  if(el('edit_firm_name'))    el('edit_firm_name').value    = firm.name||'';
+  if(el('edit_firm_owner'))   el('edit_firm_owner').value   = firm.owner||'';
+  if(el('edit_firm_addr'))    el('edit_firm_addr').value    = firm.address||'';
+  if(el('edit_firm_phone'))   el('edit_firm_phone').value   = firm.phone||'';
+  if(el('edit_firm_phone2'))  el('edit_firm_phone2').value  = firm.phone2||'';
+  if(el('edit_firm_tagline')) el('edit_firm_tagline').value = firm.tagline||'';
+  if(el('edit_firm_email'))   el('edit_firm_email').value   = firm.email||'';
+  if(el('edit_old_pass'))     el('edit_old_pass').value     = '';
+  if(el('edit_new_pass'))     el('edit_new_pass').value     = '';
+  if(el('edit_new_pass2'))    el('edit_new_pass2').value    = '';
+  if(el('editFirmErr'))       el('editFirmErr').style.display='none';
+  document.getElementById('manageFirmsModal').classList.remove('open');
+  openModal('editFirmModal');
+}
+
+function saveEditFirm(){
+  const firms = getFirms();
+  const idx   = firms.findIndex(f=>f.id===_editingFirmId);
+  if(idx===-1) return;
+  const err   = document.getElementById('editFirmErr');
+  err.style.display='none';
+
+  const newName    = document.getElementById('edit_firm_name').value.trim().toUpperCase();
+  const newOwner   = document.getElementById('edit_firm_owner').value.trim();
+  const newAddr    = document.getElementById('edit_firm_addr') ? document.getElementById('edit_firm_addr').value.trim() : firms[idx].address||'';
+  const newPhone   = document.getElementById('edit_firm_phone') ? document.getElementById('edit_firm_phone').value.trim() : firms[idx].phone||'';
+  const newPhone2  = document.getElementById('edit_firm_phone2') ? document.getElementById('edit_firm_phone2').value.trim() : firms[idx].phone2||'';
+  const newTagline = document.getElementById('edit_firm_tagline') ? document.getElementById('edit_firm_tagline').value.trim() : firms[idx].tagline||'';
+  const newEmail   = document.getElementById('edit_firm_email') ? document.getElementById('edit_firm_email').value.trim() : firms[idx].email||'';
+  const oldPass    = document.getElementById('edit_old_pass').value;
+  const newPass    = document.getElementById('edit_new_pass').value;
+  const newPass2   = document.getElementById('edit_new_pass2').value;
+
+  if(!newName){ err.textContent='Firm name cannot be empty'; err.style.display='block'; return; }
+
+  if(newPass || oldPass){
+    if(oldPass !== firms[idx].pass){ err.textContent='Current password is incorrect'; err.style.display='block'; return; }
+    if(newPass.length < 4){ err.textContent='New password must be at least 4 characters'; err.style.display='block'; return; }
+    if(newPass !== newPass2){ err.textContent='New passwords do not match'; err.style.display='block'; return; }
+    firms[idx].pass = newPass;
+  }
+
+  firms[idx].name     = newName;
+  firms[idx].owner    = newOwner;
+  firms[idx].address  = newAddr;
+  firms[idx].phone    = newPhone;
+  firms[idx].phone2   = newPhone2;
+  firms[idx].tagline  = newTagline;
+  firms[idx].email    = newEmail;
+  saveFirms(firms);
+  populateLoginDropdown();
+  closeModal('editFirmModal');
+  mdToast('✅ Firm updated successfully!');
+  if(CU === _editingFirmId){
+    const tu = document.getElementById('topUser');
+    if(tu) tu.textContent = newName;
+  }
+}
+
+function deleteFirm(id){
+  const firms = getFirms();
+  if(firms.length <= 1){ alert('Cannot delete the last firm!'); return; }
+  const firm = firms.find(f=>f.id===id);
+  if(!firm) return;
+  if(!confirm('⚠️ DELETE FIRM\n\n"'+firm.name+'"\n\nThis will permanently delete ALL data including:\n• All sales & purchases\n• All ledger entries\n• All parties & products\n\nThis CANNOT be undone!\n\nType OK to confirm.')) return;
+  // Delete all localStorage keys for this firm
+  const keysToDelete = [];
+  for(let i=0; i<localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith(id+'_')) keysToDelete.push(k);
+  }
+  keysToDelete.forEach(k => localStorage.removeItem(k));
+  const updated = firms.filter(f=>f.id!==id);
+  saveFirms(updated);
+  populateLoginDropdown();
+  showManageFirms();
+  alert('✅ Firm "'+firm.name+'" deleted successfully!');
+}
+
+// Legacy USERS object — simple object rebuilt from firms (no Proxy for compatibility)
+function _rebuildUSERS(){
+  const obj = {};
+  getFirms().forEach(f=>{ obj[f.name]=f.pass; obj[f.id]=f.pass; });
+  return obj;
+}
+// Keep USERS as a regular updatable variable
+let USERS = _rebuildUSERS();
+function _refreshUSERS(){ USERS = _rebuildUSERS(); }
 
 function k(name){ return CU+'_'+name; }
 function load(name){ return JSON.parse(localStorage.getItem(k(name))||'[]'); }
@@ -1960,21 +2357,37 @@ function saveShared(name,data){ localStorage.setItem('SHARED_'+name,JSON.stringi
 //  LOGIN / LOGOUT
 // ════════════════════════════════════════
 function doLogin(){
-  const user=document.getElementById('loginUser').value;
-  const pass=document.getElementById('loginPass').value;
-  const err=document.getElementById('loginErr');
-  if(USERS[user]===pass){
-    CU=user.replace(/ /g,'_');
+  const firmId = document.getElementById('loginUser').value;
+  const pass   = document.getElementById('loginPass').value;
+  const err    = document.getElementById('loginErr');
+  err.style.display='none';
+  const firm = getFirmById(firmId);
+  if(!firm){ err.textContent='Firm not found'; err.style.display='block'; return; }
+  if(firm.pass === pass){
+    CU = firm.id;
     document.getElementById('loginPage').style.display='none';
     document.getElementById('mainApp').style.display='block';
-    document.getElementById('topUser').textContent=user;
+    document.getElementById('topUser').textContent = firm.name;
     loadAllPages();
     showPage('dashboard');
+    // Set active FY
+    if(!localStorage.getItem(CU+'_active_fy')){
+      localStorage.setItem(CU+'_active_fy', getCurrentFYLabel());
+    }
+    renderFYSelector();
+    // Prompt new firm to setup profile if address is missing
+    const _loginFirm = getFirmById(CU);
+    if(_loginFirm && !_loginFirm.address){
+      setTimeout(function(){
+        mdToast('👆 Tip: Go to More → Manage Firms → Edit to add your shop address on bills!', 4000);
+      }, 2000);
+    }
   } else {
-    err.textContent='Wrong password!'; err.style.display='block';
+    err.textContent='Wrong password! Try again.';
+    err.style.display='block';
+    document.getElementById('loginPass').value='';
   }
 }
-document.getElementById('loginPass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 
 function logout(){
   if(confirm('Logout?')){
@@ -2476,7 +2889,7 @@ function shareWhatsApp(bno){
 
   const parties=load('parties');
   const party=parties.find(p=>p.name===bill.party)||{name:bill.party,mob:''};
-  const company=CU.replace(/_/g,' ');
+  const company=getMyCompanyName();
 
   // Build itemized list
   const itemLines=bill.items.map((it,i)=>
@@ -2511,8 +2924,8 @@ function shareWhatsApp(bno){
   msg+=`*NET TOTAL  : ₹${bill.total.toFixed(2)}*\n`;
   msg+=`Payment : ${bill.mode}\n`;
   msg+=`${'─'.repeat(28)}\n`;
-  msg+=`L-27, Basement, Bombay Market,\nUmarwada, Surat-395010\n`;
-  msg+=`📞 9426079540 / 9328932532\n`;
+  if(getMyAddress()) msg+=getMyAddress()+'\n';
+  if(getMyPhone()) msg+=`📞 ${getMyPhone()}${getMyPhone2()?' / '+getMyPhone2():''}\n`;
   msg+=`_Thank you for your business!_ 🙏`;
 
   const mob=party.mob?party.mob.replace(/\D/g,''):'';
@@ -3979,7 +4392,7 @@ function shareJangadWhatsApp(jno){
 
   const parties=load('parties');
   const partyObj=parties.find(p=>p.name===j.party)||{mob:''};
-  const company=CU.replace(/_/g,' ');
+  const company=getMyCompanyName();
 
   // Build itemized list
   let totalQty=0, totalAmt=0;
@@ -4017,8 +4430,8 @@ function shareJangadWhatsApp(jno){
   }
 
   msg+=`${'─'.repeat(28)}\n`;
-  msg+=`📞 9426079540 / 9328932532\n`;
-  msg+=`L-27, Basement, Bombay Market, Surat`;
+  if(getMyPhone()) msg+=`📞 ${getMyPhone()}${getMyPhone2()?' / '+getMyPhone2():''}`+'\n';
+  if(getMyAddress()) msg+=getMyAddress()+'\n';
 
   const mob=partyObj.mob?partyObj.mob.replace(/\D/g,''):'';
   const url=`https://wa.me/${mob?'91'+mob:''}?text=${encodeURIComponent(msg)}`;
@@ -4278,7 +4691,7 @@ function printBillByNo_OLD_REPLACED(bno){
   }
 
   // current user company
-  const company=CU.replace(/_/g,' ');
+  const company=getMyCompanyName();
   let itemRows='';
   let totalQty=0;
   bill.items.forEach((it,i)=>{
@@ -4323,13 +4736,13 @@ table{width:100%;border-collapse:collapse}
 <table style="border-bottom:1px solid #000;margin-bottom:4px"><tr>
   <td style="font-size:10px">|| JAY AMBE ||</td>
   <td style="text-align:center;font-size:10px">|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||</td>
-  <td style="text-align:right;font-size:10px">9426079540<br>9328932532</td>
+  <td style="text-align:right;font-size:10px">${getMyPhone()||''}<br>${getMyPhone2()||''}</td>
 </tr></table>
 
 <!-- COMPANY -->
 <div style="text-align:center;font-size:20px;font-weight:900;letter-spacing:2px;padding:3px 0">${company}</div>
-<div style="text-align:center;font-size:10px;font-weight:bold">MANUFACTURER &amp; TRADERS OF FANCY AND DESIGNER CHANIYA CHOLI AND SAREES</div>
-<div style="text-align:center;font-size:10px;padding:2px 0">L-27, BASEMENT, BOMBAY MARKET, UMARWADA, SURAT - 395010</div>
+${getMyTagline()?`<div style="text-align:center;font-size:10px;font-weight:bold">${getMyTagline().toUpperCase()}</div>`:''}
+<div style="text-align:center;font-size:10px;padding:2px 0">${getMyAddress().toUpperCase()}</div>
 
 <table style="border-top:1px solid #000;border-bottom:2px solid #000;margin:3px 0"><tr>
   <td>State Name : GUJARAT &nbsp;&nbsp; State Code : 24</td>
@@ -4691,7 +5104,7 @@ function shareDCWhatsApp(dcno){
 
   const parties=load('parties');
   const partyObj=parties.find(p=>p.name===d.party)||{mob:''};
-  const company=CU.replace(/_/g,' ');
+  const company=getMyCompanyName();
 
   // Build itemized list
   let totalQty=0, totalAmt=0;
@@ -4730,8 +5143,8 @@ function shareDCWhatsApp(dcno){
   }
 
   msg+=`${'─'.repeat(28)}\n`;
-  msg+=`📞 9426079540 / 9328932532\n`;
-  msg+=`L-27, Basement, Bombay Market, Surat\n`;
+  if(getMyPhone()) msg+=`📞 ${getMyPhone()}${getMyPhone2()?' / '+getMyPhone2():''}`+'\n';
+  if(getMyAddress()) msg+=getMyAddress()+'\n';
   msg+=`GSTIN: 24AZZPS3106R1ZF`;
 
   const mob=partyObj.mob?partyObj.mob.replace(/\D/g,''):'';
@@ -4962,7 +5375,7 @@ function printDC(dcno){
   if(!d){alert('DC not found');return;}
   const parties=load('parties');
   const party=parties.find(p=>p.name===d.party)||{name:d.party,addr:'',mob:''};
-  const company=CU.replace(/_/g,' ');
+  const company=getMyCompanyName();
 
   let itemRows='', totalQty=0, totalAmt=0;
   d.items.forEach((it,i)=>{
@@ -5006,14 +5419,14 @@ table{width:100%;border-collapse:collapse}
 <table style="background:#c0392b;color:#fff;border-bottom:none"><tr>
   <td style="padding:3px 6px;font-size:9px;width:20%">|| JAY AMBE ||</td>
   <td style="text-align:center;font-size:9px">|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||</td>
-  <td style="text-align:right;padding:3px 6px;font-size:9px;width:22%">M.: 93289 32532<br>9426079540</td>
+  <td style="text-align:right;padding:3px 6px;font-size:9px;width:22%">${getMyPhone()?getMyPhone():''}${getMyPhone2()?'<br>'+getMyPhone2():''}</td>
 </tr></table>
 
 <!-- COMPANY -->
 <div style="text-align:center;padding:5px 0 3px;border-bottom:2px solid #c0392b">
   <div style="font-size:22px;font-weight:900;letter-spacing:2px;color:#c0392b">${company}</div>
-  <div style="font-size:9px;color:#c0392b;font-style:italic;margin-top:1px">Wholesalers All Kind of Sarees &nbsp;|&nbsp; GSTIN : 24AZZPS3106R1ZF</div>
-  <div style="font-size:9px;color:#555">L-27, Upper, Bombay Market, Umarwada, Surat-10.</div>
+  <div style="font-size:9px;color:#c0392b;font-style:italic;margin-top:1px">${getMyTagline()}${getMyGSTIN()?' &nbsp;|&nbsp; GSTIN : '+getMyGSTIN():''}</div>
+  <div style="font-size:9px;color:#555">${getMyAddress()}</div>
 </div>
 
 <!-- PARTY + DC INFO ROW -->
@@ -5637,11 +6050,11 @@ function shareBillPDF(bno){
       <table style="width:100%;border-bottom:1px solid #000;margin-bottom:4px;border-collapse:collapse"><tr>
         <td style="font-size:9px;padding:2px">|| JAY AMBE ||</td>
         <td style="text-align:center;font-size:9px;padding:2px">|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||</td>
-        <td style="text-align:right;font-size:9px;padding:2px">9426079540<br>9328932532</td>
+        <td style="text-align:right;font-size:9px;padding:2px">${getMyPhone()||''}<br>${getMyPhone2()||''}</td>
       </tr></table>
       <div style="text-align:center;font-size:20px;font-weight:900;padding:3px 0">${company}</div>
-      <div style="text-align:center;font-size:9px;font-weight:bold">MANUFACTURER &amp; TRADERS OF FANCY AND DESIGNER CHANIYA CHOLI AND SAREES</div>
-      <div style="text-align:center;font-size:9px">L-27, BASEMENT, BOMBAY MARKET, UMARWADA, SURAT - 395010</div>
+      ${getMyTagline()?'<div style="text-align:center;font-size:9px;font-weight:bold">'+getMyTagline().toUpperCase()+'</div>':''}
+      ${getMyAddress()?'<div style="text-align:center;font-size:9px">'+getMyAddress().toUpperCase()+'</div>':''}
       ${myGSTIN ? `<div style="text-align:center;font-size:9px;font-weight:bold">GSTIN: ${myGSTIN}</div>` : ''}
       <table style="width:100%;border-top:1px solid #000;border-bottom:2px solid #000;margin:3px 0;border-collapse:collapse"><tr>
         <td style="padding:2px">State: ${myState} &nbsp; Code: ${mySC}</td>
@@ -5755,12 +6168,12 @@ function shareDCPDF(dcno){
       <table style="width:100%;background:#c0392b;color:#fff"><tr>
         <td style="padding:3px 6px;font-size:9px">|| JAY AMBE ||</td>
         <td style="text-align:center;font-size:9px">|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||</td>
-        <td style="text-align:right;padding:3px 6px;font-size:9px">M.: 93289 32532<br>9426079540</td>
+        <td style="text-align:right;padding:3px 6px;font-size:9px">${getMyPhone2()?'M.: '+getMyPhone2():''}<br>${getMyPhone()||''}</td>
       </tr></table>
       <div style="text-align:center;padding:5px 0;border-bottom:2px solid #c0392b">
         <div style="font-size:20px;font-weight:900;color:#c0392b">${company}</div>
         <div style="font-size:9px;color:#c0392b">Wholesalers All Kind of Sarees | GSTIN: 24AZZPS3106R1ZF</div>
-        <div style="font-size:9px;color:#555">L-27, Upper, Bombay Market, Umarwada, Surat-10.</div>
+        <div style="font-size:9px;color:#555">${getMyAddress()}</div>
       </div>
       <div style="text-align:center;font-size:14px;font-weight:900;color:#c0392b;border-bottom:2px solid #c0392b;padding:3px 0;letter-spacing:3px">DELIVERY CHALLAN</div>
       <table style="width:100%;border:1px solid #c0392b;border-collapse:collapse"><tr>
@@ -5831,7 +6244,7 @@ function shareLedgerPDF(){
   const html = `
     <div style="font-family:Arial,sans-serif;font-size:11px;max-width:190mm">
       <div style="text-align:center;font-size:18px;font-weight:900;padding:6px 0">${company}</div>
-      <div style="text-align:center;font-size:11px;margin-bottom:8px">L-27, Basement, Bombay Market, Umarwada, Surat | 📞 9426079540</div>
+      <div style="text-align:center;font-size:11px;margin-bottom:8px">L-27, Basement, Bomba${getMyAddress()?getMyAddress()+' | ':''} 📞 ${getMyPhone()||''}</div>
       <div style="background:#2c3e50;color:#fff;padding:8px 12px;border-radius:6px;margin-bottom:8px">
         <div style="font-size:14px;font-weight:bold">LEDGER STATEMENT</div>
         <div>Party: <b>${party}</b> &nbsp;|&nbsp; Generated: ${new Date().toLocaleDateString('en-IN')}</div>
@@ -5893,7 +6306,7 @@ function shareLedgerWhatsApp(){
   msg += `Total Credit : ₹${credit.toFixed(2)}\n`;
   msg += `*${bal>=0?'You owe us':'We owe you'}: ₹${Math.abs(bal).toFixed(2)}*\n`;
   msg += `${'─'.repeat(30)}\n`;
-  msg += `📞 9426079540 | Subject to Surat Jurisdiction`;
+  msg += `📞 ${getMyPhone()||''} | ${getMyCompanyName()}`;
 
   const mob = partyObj.mob ? partyObj.mob.replace(/\D/g,'') : '';
   window.open(`https://wa.me/${mob?'91'+mob:''}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -5935,7 +6348,7 @@ function shareOutstandingWhatsApp(){
     msg += `*Total Payable: ₹${totC.toFixed(2)}*\n`;
     msg += `${'─'.repeat(30)}\n`;
   }
-  msg += `📞 9426079540 | ${CU.replace(/_/g,' ')}`;
+  msg += `📞 ${getMyPhone()||''} | ${getMyCompanyName()}`;
 
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 }
@@ -6997,12 +7410,12 @@ table{width:100%;border-collapse:collapse}
 <table style="border-bottom:1px solid #000;margin-bottom:4px"><tr>
   <td style="font-size:10px">|| JAY AMBE ||</td>
   <td style="text-align:center;font-size:10px">|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||</td>
-  <td style="text-align:right;font-size:10px">9426079540<br>9328932532</td>
+  <td style="text-align:right;font-size:10px">${getMyPhone()||''}<br>${getMyPhone2()||''}</td>
 </tr></table>
 
 <div style="text-align:center;font-size:20px;font-weight:900;letter-spacing:2px;padding:3px 0">${company}</div>
-<div style="text-align:center;font-size:10px;font-weight:bold">MANUFACTURER &amp; TRADERS OF FANCY AND DESIGNER CHANIYA CHOLI AND SAREES</div>
-<div style="text-align:center;font-size:10px;padding:2px 0">L-27, BASEMENT, BOMBAY MARKET, UMARWADA, SURAT - 395010</div>
+${getMyTagline()?`<div style="text-align:center;font-size:10px;font-weight:bold">${getMyTagline().toUpperCase()}</div>`:''}
+<div style="text-align:center;font-size:10px;padding:2px 0">${getMyAddress().toUpperCase()}</div>
 ${myGSTIN?`<div style="text-align:center;font-size:10px;font-weight:bold">GSTIN: ${myGSTIN}</div>`:''}
 
 <table style="border-top:1px solid #000;border-bottom:2px solid #000;margin:3px 0"><tr>
@@ -7338,11 +7751,29 @@ document.addEventListener('touchend', function(e) {
 function exportAllData() {
   if (typeof CU === 'undefined' || !CU) { mdToast('Please login first'); return; }
   const data = {};
-  const keys = ['sales','purchases','cash','bank','ledger','parties','jangads','dcs','saleReturns','purReturns','income','expense','assets'];
-  keys.forEach(k => { try { data[k] = JSON.parse(localStorage.getItem(CU + '_' + k) || '[]'); } catch(e) {} });
+
+  // ── Array-based keys (stored as JSON arrays) ──
+  const arrayKeys = ['sales','purchases','cash','bank','ledger','parties','jangads','dcs','saleReturns','purReturns','income','expense','assets','journal'];
+  arrayKeys.forEach(k => {
+    try { data[k] = JSON.parse(localStorage.getItem(CU + '_' + k) || '[]'); } catch(e) { data[k] = []; }
+  });
+
+  // ── Scalar / string keys (stored as plain strings) ──
+  const scalarKeys = ['opening_cash','opening_bank','capital','active_fy','gst_gstin','gst_state','gst_sc','gst_bank','gst_addr'];
+  scalarKeys.forEach(k => {
+    const val = localStorage.getItem(CU + '_' + k);
+    if (val !== null) data['__' + k] = val;
+  });
+
+  // ── Shared / global keys ──
   data['SHARED_products'] = JSON.parse(localStorage.getItem('SHARED_products') || '[]');
+  const firms = localStorage.getItem('MOJ_FIRMS');
+  if (firms) data['__MOJ_FIRMS'] = firms; // raw string, already JSON
+
+  // ── Metadata ──
   data['_exported'] = new Date().toISOString();
   data['_user'] = CU;
+
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -7366,14 +7797,29 @@ function importAllData() {
         const data = JSON.parse(ev.target.result);
         if (!data._user) { mdToast('❌ Invalid backup file'); return; }
         const prefix = data._user;
+
         Object.keys(data).forEach(k => {
-          if (k.startsWith('_')) return;
-          if (k.startsWith('SHARED_')) {
+          if (k === '_exported' || k === '_user') return; // skip metadata
+
+          if (k === '__MOJ_FIRMS') {
+            // Restore global firms list (value is already a JSON string)
+            localStorage.setItem('MOJ_FIRMS', data[k]);
+
+          } else if (k.startsWith('SHARED_')) {
+            // Restore shared keys (products, etc.)
             localStorage.setItem(k, JSON.stringify(data[k]));
+
+          } else if (k.startsWith('__')) {
+            // Restore scalar keys — strip the __ prefix, store as plain string
+            const realKey = k.slice(2); // e.g. 'opening_cash'
+            localStorage.setItem(prefix + '_' + realKey, data[k]);
+
           } else {
+            // Restore array-based keys
             localStorage.setItem(prefix + '_' + k, JSON.stringify(data[k]));
           }
         });
+
         mdToast('✅ Data restored! Please refresh.', 3000);
         setTimeout(() => window.location.reload(), 2000);
       } catch(e) {
@@ -7425,5 +7871,629 @@ if (_origOpenModal) {
 }
 </script>
 
+
+<!-- ════ FEATURE: MULTI FINANCIAL YEAR + DOUBLE ENTRY + FIRM INIT ════ -->
+<script>
+// ═══════════════════════════════════════════
+//  FINANCIAL YEAR UTILITIES
+// ═══════════════════════════════════════════
+function getCurrentFYLabel(){
+  const now = new Date();
+  const yr  = now.getFullYear();
+  const mo  = now.getMonth()+1; // 1-12
+  if(mo >= 4) return yr+'-'+(yr+1).toString().slice(2); // Apr onwards = new FY
+  return (yr-1)+'-'+yr.toString().slice(2);
+}
+
+function getFYList(){
+  // Generate FY options: last 5 years + next year
+  const fys = [];
+  const now  = new Date();
+  const curYr = now.getMonth()>=3 ? now.getFullYear() : now.getFullYear()-1;
+  for(let y=curYr-3; y<=curYr+1; y++){
+    fys.push(y+'-'+(y+1).toString().slice(2));
+  }
+  return fys;
+}
+
+function getActiveFY(){
+  if(!CU) return getCurrentFYLabel();
+  return localStorage.getItem(CU+'_active_fy') || getCurrentFYLabel();
+}
+
+function setActiveFY(fy){
+  if(!CU) return;
+  localStorage.setItem(CU+'_active_fy', fy);
+}
+
+// Parse FY label to start/end dates
+function fyToDates(fy){
+  // e.g. "2024-25" → start: 01-04-2024, end: 31-03-2025
+  const parts = fy.split('-');
+  const startYr = parseInt(parts[0]);
+  const endYr   = startYr + 1;
+  return {
+    start: new Date(startYr, 3, 1),   // April 1
+    end:   new Date(endYr,   2, 31),   // March 31
+    startStr: '01-04-'+startYr,
+    endStr:   '31-03-'+endYr
+  };
+}
+
+// Check if a DD-MM-YYYY date string falls in given FY
+function dateInFY(dateStr, fy){
+  if(!dateStr || dateStr==='Opening') return true; // opening entries always show
+  try{
+    const parts = dateStr.split('-');
+    if(parts.length!==3) return true;
+    const d = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
+    const {start, end} = fyToDates(fy);
+    return d >= start && d <= end;
+  } catch(e){ return true; }
+}
+
+// Render FY selector in topbar
+function renderFYSelector(){
+  let sel = document.getElementById('fySelector');
+  if(!sel){
+    const topbar = document.querySelector('.topbar > div:last-child');
+    if(!topbar) return;
+    sel = document.createElement('select');
+    sel.id = 'fySelector';
+    sel.style.cssText = 'background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:5px 8px;border-radius:8px;font-size:11px;font-weight:600;font-family:var(--font-ui);cursor:pointer;outline:none;margin-right:4px;max-width:90px';
+    sel.onchange = function(){ setActiveFY(this.value); reloadCurrentPage(); mdToast('FY changed to '+this.value); };
+    topbar.insertBefore(sel, topbar.firstChild);
+  }
+  const fys = getFYList();
+  const active = getActiveFY();
+  sel.innerHTML = fys.map(fy=>`<option value="${fy}" ${fy===active?'selected':''}>${fy}</option>`).join('');
+}
+
+function reloadCurrentPage(){
+  // Re-render whatever page is active
+  const active = document.querySelector('.page.active') || document.querySelector('.page[style*="block"]');
+  if(!active) return;
+  const id = active.id.replace('pg_','');
+  if(id) showPage(id);
+}
+
+// Filter data array by active FY
+function filterByFY(arr, dateField){
+  const fy = getActiveFY();
+  return arr.filter(item => dateInFY(item[dateField]||'', fy));
+}
+
+// ═══════════════════════════════════════════
+//  DOUBLE-ENTRY LEDGER ENGINE
+//  Auto-generates second entry for every transaction
+// ═══════════════════════════════════════════
+
+// Chart of Accounts — standard accounts
+const ACCOUNTS = {
+  CASH:     { name:'Cash Account',        type:'Asset',     normal:'Dr' },
+  BANK:     { name:'Bank Account',        type:'Asset',     normal:'Dr' },
+  SALES:    { name:'Sales Account',       type:'Income',    normal:'Cr' },
+  PURCHASE: { name:'Purchase Account',    type:'Expense',   normal:'Dr' },
+  STOCK:    { name:'Stock Account',       type:'Asset',     normal:'Dr' },
+  CAPITAL:  { name:'Capital Account',     type:'Liability', normal:'Cr' },
+  DRAWINGS: { name:'Drawings Account',    type:'Expense',   normal:'Dr' },
+  SALE_RETURN:{ name:'Sales Return A/c',  type:'Expense',   normal:'Dr' },
+  PUR_RETURN: { name:'Purchase Return A/c',type:'Income',   normal:'Cr' },
+  GST_OUTPUT: { name:'GST Output (Payable)',type:'Liability',normal:'Cr' },
+  GST_INPUT:  { name:'GST Input (ITC)',    type:'Asset',    normal:'Dr' },
+  OTHER_INCOME:{ name:'Other Income',      type:'Income',   normal:'Cr' },
+  OTHER_EXP:   { name:'Other Expense',     type:'Expense',  normal:'Dr' },
+};
+
+// Double-entry rules: each transaction type → [DrAccount, CrAccount]
+const DE_RULES = {
+  // Sale cash: Cash Dr / Sales Cr + GST Output Cr
+  'SALE_CASH':       ['CASH',    'SALES'],
+  'SALE_BANK':       ['BANK',    'SALES'],
+  'SALE_CREDIT':     ['DEBTOR',  'SALES'],   // DEBTOR = party name
+  // Purchase cash: Purchase Dr / Cash Cr + GST Input Dr
+  'PURCHASE_CASH':   ['PURCHASE','CASH'],
+  'PURCHASE_BANK':   ['PURCHASE','BANK'],
+  'PURCHASE_CREDIT': ['PURCHASE','CREDITOR'], // CREDITOR = party name
+  // Payment received from debtor
+  'CASH_RECEIPT':    ['CASH',    'DEBTOR'],
+  'BANK_RECEIPT':    ['BANK',    'DEBTOR'],
+  // Payment made to creditor
+  'CASH_PAYMENT':    ['CREDITOR','CASH'],
+  'BANK_PAYMENT':    ['CREDITOR','BANK'],
+  // Returns
+  'SALE_RETURN':     ['SALES',   'DEBTOR'],
+  'PURCHASE_RETURN': ['CREDITOR','PURCHASE'],
+  // Capital & drawings
+  'CAPITAL_CASH':    ['CASH',    'CAPITAL'],
+  'DRAWING_CASH':    ['DRAWINGS','CASH'],
+  // Other
+  'OTHER_INCOME':    ['CASH',    'OTHER_INCOME'],
+  'OTHER_EXPENSE':   ['OTHER_EXP','CASH'],
+};
+
+// Add a double-entry transaction
+function addDE(date, type, partyName, ref, amount, gstAmt){
+  gstAmt = gstAmt || 0;
+  const journal = loadDE();
+  const entry = {
+    date, type, ref,
+    party: partyName,
+    amount: parseFloat(amount),
+    gst: parseFloat(gstAmt),
+    id: Date.now() + Math.random()
+  };
+  journal.push(entry);
+  saveDE(journal);
+}
+
+function loadDE(){ try{ return JSON.parse(localStorage.getItem(CU+'_journal')||'[]'); }catch(e){ return []; } }
+function saveDE(d){ try{ localStorage.setItem(CU+'_journal', JSON.stringify(d)); }catch(e){} }
+
+// Remove DE entries linked to a ref
+function removeDE(ref, types){
+  let j = loadDE();
+  if(types && types.length) j = j.filter(e => !(e.ref===String(ref) && types.includes(e.type)));
+  else j = j.filter(e => e.ref!==String(ref));
+  saveDE(j);
+}
+
+// Generate full double-entry view for a party or account
+function getDELedger(accountOrParty){
+  const j = loadDE();
+  const fy = getActiveFY();
+  const entries = [];
+  j.forEach(e=>{
+    if(!dateInFY(e.date, fy)) return;
+    const rule = DE_RULES[e.type] || DE_RULES[e.type+'_CASH'];
+    if(!rule) return;
+    let drAcc = rule[0]==='DEBTOR'||rule[0]==='CREDITOR' ? e.party : rule[0];
+    let crAcc = rule[1]==='DEBTOR'||rule[1]==='CREDITOR' ? e.party : rule[1];
+    if(drAcc===accountOrParty) entries.push({...e, side:'Dr', amount:e.amount});
+    if(crAcc===accountOrParty) entries.push({...e, side:'Cr', amount:e.amount});
+  });
+  return entries;
+}
+
+// ── HOOK INTO EXISTING SAVE FUNCTIONS ──
+// We intercept saveSale, savePurchase etc to also write journal entries
+
+const _origAddLedger = addLedger;
+window.addLedger = function(date, party, type, ref, amount){
+  _origAddLedger(date, party, type, ref, amount);
+  // Also write to double-entry journal
+  addDE(date, type, party, ref, amount, 0);
+};
+
+// ═══════════════════════════════════════════
+//  DOUBLE ENTRY REPORT PAGE
+// ═══════════════════════════════════════════
+function generateDEReport(){
+  const j = loadDE();
+  const fy = getActiveFY();
+  const filtered = j.filter(e => dateInFY(e.date, fy));
+
+  // Build account-wise balances
+  const accounts = {};
+  const addToAcc = (name, side, amt) => {
+    if(!accounts[name]) accounts[name] = {Dr:0, Cr:0};
+    accounts[name][side] += amt;
+  };
+
+  filtered.forEach(e => {
+    const rule = DE_RULES[e.type];
+    if(!rule) return;
+    let dr = rule[0]==='DEBTOR'||rule[0]==='CREDITOR' ? e.party : rule[0];
+    let cr = rule[1]==='DEBTOR'||rule[1]==='CREDITOR' ? e.party : rule[1];
+    addToAcc(dr, 'Dr', e.amount);
+    addToAcc(cr, 'Cr', e.amount);
+    // GST
+    if(e.gst > 0){
+      if(e.type.startsWith('SALE'))     { addToAcc('GST_OUTPUT','Cr',e.gst); addToAcc(dr,'Dr',e.gst); }
+      if(e.type.startsWith('PURCHASE')) { addToAcc('GST_INPUT','Dr',e.gst); addToAcc(cr,'Cr',e.gst); }
+    }
+  });
+
+  let totalDr=0, totalCr=0;
+  let rows = '';
+  Object.keys(accounts).sort().forEach(acc => {
+    const {Dr, Cr} = accounts[acc];
+    const label = ACCOUNTS[acc] ? ACCOUNTS[acc].name : acc;
+    totalDr += Dr; totalCr += Cr;
+    rows += `<tr>
+      <td>${label}</td>
+      <td style="text-align:right">${Dr>0?'₹'+Dr.toFixed(2):'-'}</td>
+      <td style="text-align:right">${Cr>0?'₹'+Cr.toFixed(2):'-'}</td>
+    </tr>`;
+  });
+
+  const balanced = Math.abs(totalDr-totalCr) < 1;
+  const div = document.getElementById('deReportDiv');
+  if(!div) return;
+  div.innerHTML = `
+    <div style="background:var(--md-surface);border-radius:var(--md-radius-lg);overflow:hidden;box-shadow:var(--md-shadow-sm)">
+      <table>
+        <thead><tr><th>Account</th><th style="text-align:right">Debit (₹)</th><th style="text-align:right">Credit (₹)</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr style="font-weight:700;background:var(--md-nav-bg);color:#fff">
+            <td>TOTAL</td>
+            <td style="text-align:right">₹${totalDr.toFixed(2)}</td>
+            <td style="text-align:right">₹${totalCr.toFixed(2)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="alert ${balanced?'alert-success':'alert-danger'}" style="margin-top:10px">
+      ${balanced?'✅ Double-Entry Balances! Dr = Cr ✓':'⚠️ Does not balance — Dr: ₹'+totalDr.toFixed(2)+' | Cr: ₹'+totalCr.toFixed(2)}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  FY-AWARE REPORT OVERRIDES
+// ═══════════════════════════════════════════
+const _origGenerateReport = typeof generateReport === 'function' ? generateReport : null;
+if(_origGenerateReport){
+  window.generateReport = function(){
+    _origGenerateReport();
+    // Add FY label to report
+    const rd = document.getElementById('reportDiv');
+    if(rd){
+      const fyLabel = document.createElement('div');
+      fyLabel.style.cssText = 'background:var(--md-nav-bg);color:#fff;padding:8px 14px;border-radius:var(--md-radius-md);font-size:12px;font-weight:700;text-align:center;margin-bottom:12px;letter-spacing:1px';
+      fyLabel.textContent = '📅 Financial Year: '+getActiveFY();
+      rd.insertBefore(fyLabel, rd.firstChild);
+    }
+  };
+}
+
+// ═══════════════════════════════════════════
+//  INITIALIZATION ON DOM READY
+// ═══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+  // 1. Populate firm dropdown
+  populateLoginDropdown();
+  if(typeof _refreshUSERS==='function') _refreshUSERS();
+
+  // 2. Add Double Entry Report section to Reports page
+  const reportPage = document.getElementById('pg_reports');
+  if(reportPage){
+    const deCard = document.createElement('div');
+    deCard.className = 'card';
+    deCard.innerHTML = `
+      <h3>📒 Double Entry Journal (Tally-Style)</h3>
+      <div style="background:var(--md-primary-container);border-radius:var(--md-radius-md);padding:10px;margin-bottom:10px;font-size:12px;color:#92600a">
+        <b>Auto double entry:</b> Every sale, purchase, cash, bank transaction automatically generates both Dr and Cr entries — just like Tally! FY: <b id="deFYLabel">${getCurrentFYLabel()}</b>
+      </div>
+      <button class="btn btn-blue btn-full" onclick="generateDEReport()" style="margin-bottom:10px">Generate Double Entry Report</button>
+      <div id="deReportDiv"></div>
+    `;
+    reportPage.appendChild(deCard);
+  }
+
+  // 3. Add FY selector card to Reports page
+  const reportPage2 = document.getElementById('pg_reports');
+  if(reportPage2){
+    const fyCard = document.createElement('div');
+    fyCard.className = 'card';
+    fyCard.style.cssText = 'background:linear-gradient(135deg,#1a1f2e,#2c3a5a);color:#fff;margin-bottom:12px';
+    fyCard.innerHTML = `
+      <h3 style="color:#fff">📅 Financial Year Filter</h3>
+      <p style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:10px">All reports filter by selected FY. Change FY from the topbar dropdown.</p>
+      <div id="fyReportInfo" style="background:rgba(255,255,255,.1);border-radius:var(--md-radius-md);padding:10px;font-size:13px;font-weight:600;text-align:center"></div>
+    `;
+    reportPage2.insertBefore(fyCard, reportPage2.firstChild);
+  }
+
+  // 4. Add Firm Management to More page
+  const morePage = document.getElementById('pg_more');
+  if(morePage){
+    const mc = morePage.querySelector('.card');
+    if(mc){
+      const firmDiv = document.createElement('div');
+      firmDiv.style.cssText = 'border-top:1px solid var(--md-outline);margin-top:8px;padding-top:8px';
+      firmDiv.innerHTML = `
+        <p style="font-size:11px;font-weight:700;color:var(--md-on-surface-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Firm Management</p>
+        <button class="btn btn-blue btn-full" style="margin-bottom:8px" onclick="showManageFirms()">🏢 Manage Firms & Passwords</button>
+      `;
+      mc.insertBefore(firmDiv, mc.firstChild);
+    }
+  }
+});
+
+// ═══════════════════════════════════════════
+//  UPDATE FY LABEL WHEN PAGE LOADS
+// ═══════════════════════════════════════════
+const _origShowPage = typeof showPage === 'function' ? showPage : null;
+if(_origShowPage){
+  window.showPage = function(name){
+    _origShowPage(name);
+    // Update FY labels
+    const deFY = document.getElementById('deFYLabel');
+    if(deFY) deFY.textContent = getActiveFY();
+    const fyInfo = document.getElementById('fyReportInfo');
+    if(fyInfo){
+      const {startStr, endStr} = fyToDates(getActiveFY());
+      fyInfo.textContent = 'Active: FY '+getActiveFY()+' ('+startStr+' to '+endStr+')';
+    }
+  };
+}
+</script>
+
+<!-- RESET PASSWORD MODAL -->
+<div id="resetPassModal" class="modal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="document.getElementById('resetPassModal').classList.remove('open');showManageFirms()">×</button>
+    <h3>🔑 Reset Password</h3>
+    <div style="background:var(--md-surface-variant);border-radius:var(--md-radius-md);padding:10px 14px;margin-bottom:14px">
+      <span style="font-size:12px;color:var(--md-on-surface-muted)">Firm: </span>
+      <span id="resetPassFirmName" style="font-weight:700;font-size:13px"></span>
+    </div>
+    <div class="form-group">
+      <label>New Password</label>
+      <input type="password" id="reset_new_pass" placeholder="Min 4 characters">
+    </div>
+    <div class="form-group">
+      <label>Confirm New Password</label>
+      <input type="password" id="reset_new_pass2" placeholder="Repeat new password">
+    </div>
+    <div id="resetPassErr" class="alert alert-danger" style="display:none"></div>
+    <button class="btn btn-orange btn-full" onclick="saveResetPass()">🔑 Save New Password</button>
+  </div>
+</div>
+
+<!-- ════ BANK RECONCILIATION — COMPLETE JS ENGINE ════ -->
+<script>
+// ═══════════════════════════════════════════
+//  BANK RECONCILIATION
+// ═══════════════════════════════════════════
+
+// Storage for manual bank statement entries
+let _brStatementEntries = [];
+
+// Load bank recon page — set current month/year
+function loadBankReconPage(){
+  const now   = new Date();
+  const mo    = String(now.getMonth()+1).padStart(2,'0');
+  const yr    = String(now.getFullYear());
+  const mSel  = document.getElementById('br_month');
+  const yrInp = document.getElementById('br_year');
+  if(mSel)  mSel.value  = mo;
+  if(yrInp) yrInp.value = yr;
+  _brStatementEntries   = [];
+  renderBRStatementList();
+  document.getElementById('br_result') && (document.getElementById('br_result').innerHTML = '');
+}
+
+// Add a manual bank statement entry
+function addBankStatementEntry(){
+  const desc = document.getElementById('br_desc').value.trim();
+  const type = document.getElementById('br_type').value;  // CREDIT or DEBIT
+  const amt  = parseFloat(document.getElementById('br_amt').value) || 0;
+  const dt   = document.getElementById('br_date_entry').value.trim();
+
+  if(!desc){ alert('Enter description'); return; }
+  if(amt <= 0){ alert('Enter a valid amount'); return; }
+
+  _brStatementEntries.push({ desc, type, amt, date: dt || '-' });
+
+  // Clear inputs
+  document.getElementById('br_desc').value       = '';
+  document.getElementById('br_amt').value         = '';
+  document.getElementById('br_date_entry').value  = '';
+
+  renderBRStatementList();
+  runBankRecon();
+}
+
+// Render manual statement list
+function renderBRStatementList(){
+  const div = document.getElementById('br_statement_list');
+  if(!div) return;
+  if(_brStatementEntries.length === 0){
+    div.innerHTML = '<p style="color:var(--muted);font-size:12px;text-align:center;padding:8px">No entries added yet</p>';
+    return;
+  }
+  div.innerHTML = _brStatementEntries.map((e,i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:${e.type==='CREDIT'?'#d4edda':'#fdecea'};border-radius:8px;margin-bottom:6px">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600">${e.desc}</div>
+        <div style="font-size:11px;color:#555">${e.date}</div>
+      </div>
+      <div style="font-weight:700;font-size:13px;color:${e.type==='CREDIT'?'#155724':'#c0392b'}">
+        ${e.type==='CREDIT'?'+':'-'}₹${e.amt.toFixed(2)}
+      </div>
+      <button onclick="removeBREntry(${i})" style="background:none;border:none;font-size:16px;cursor:pointer;color:#888">✕</button>
+    </div>`).join('');
+}
+
+function removeBREntry(i){
+  _brStatementEntries.splice(i,1);
+  renderBRStatementList();
+  runBankRecon();
+}
+
+// ── CORE RECONCILIATION ENGINE ──
+function runBankRecon(){
+  const mm = document.getElementById('br_month') ? document.getElementById('br_month').value : '';
+  const yy = document.getElementById('br_year')  ? document.getElementById('br_year').value  : '';
+  const stmtOpening = parseFloat(document.getElementById('br_opening') ? document.getElementById('br_opening').value : 0) || 0;
+  const stmtClosing = parseFloat(document.getElementById('br_closing') ? document.getElementById('br_closing').value : 0) || 0;
+  const resultDiv   = document.getElementById('br_result');
+  if(!resultDiv) return;
+  if(!mm || !yy){ resultDiv.innerHTML = ''; return; }
+
+  // ── Get MOJ bank transactions for selected month ──
+  const bank     = load('bank');
+  const openingB = parseFloat(localStorage.getItem(CU+'_opening_bank') || 0);
+
+  // Filter entries for selected month/year
+  function inMonth(dateStr){
+    if(!dateStr) return false;
+    const parts = dateStr.split('-');
+    if(parts.length !== 3) return false;
+    return parts[1] === mm && parts[2] === yy;
+  }
+
+  // All MOJ bank entries up to end of selected month (for running balance)
+  const allBefore = bank.filter(b => {
+    if(!b.date) return false;
+    const p = b.date.split('-');
+    if(p.length !== 3) return false;
+    const bDate = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+    const mEnd  = new Date(parseInt(yy), parseInt(mm)-1, 1);
+    return bDate < mEnd;
+  });
+
+  const mojEntries = bank.filter(b => inMonth(b.date));
+
+  // Calculate MOJ opening balance for this month
+  let mojOpenBal = openingB;
+  allBefore.forEach(b => { mojOpenBal += (b.type==='RECEIPT' ? 1 : -1) * b.amount; });
+
+  // Calculate MOJ closing balance for this month
+  let mojCloseBal = mojOpenBal;
+  mojEntries.forEach(b => { mojCloseBal += (b.type==='RECEIPT' ? 1 : -1) * b.amount; });
+
+  // MOJ entries total for month
+  let mojReceipts = 0, mojPayments = 0;
+  mojEntries.forEach(b => {
+    if(b.type==='RECEIPT') mojReceipts += b.amount;
+    else mojPayments += b.amount;
+  });
+
+  // ── Statement totals ──
+  let stmtCredits = 0, stmtDebits = 0;
+  _brStatementEntries.forEach(e => {
+    if(e.type==='CREDIT') stmtCredits += e.amt;
+    else stmtDebits += e.amt;
+  });
+
+  // ── Matching logic ──
+  // Find MOJ entries NOT in statement
+  const unmatchedMOJ = mojEntries.filter(b => {
+    return !_brStatementEntries.some(s =>
+      Math.abs(s.amt - b.amount) < 1 &&
+      ((s.type==='CREDIT' && b.type==='RECEIPT') || (s.type==='DEBIT' && b.type==='PAYMENT'))
+    );
+  });
+
+  // Find statement entries NOT in MOJ
+  const unmatchedStmt = _brStatementEntries.filter(s => {
+    return !mojEntries.some(b =>
+      Math.abs(s.amt - b.amount) < 1 &&
+      ((s.type==='CREDIT' && b.type==='RECEIPT') || (s.type==='DEBIT' && b.type==='PAYMENT'))
+    );
+  });
+
+  // ── Difference ──
+  const diff         = Math.abs(mojCloseBal - stmtClosing);
+  const isBalanced   = diff < 1;
+  const monthNames   = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthLabel   = monthNames[parseInt(mm)] + ' ' + yy;
+
+  // ── Render Result ──
+  resultDiv.innerHTML = `
+
+    <!-- SUMMARY CARDS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:#2980b9;color:#fff;border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:18px;font-weight:800">₹${mojCloseBal.toFixed(2)}</div>
+        <div style="font-size:10px;opacity:.8;margin-top:2px;text-transform:uppercase;letter-spacing:.5px">MOJ Bank Balance</div>
+      </div>
+      <div style="background:${isBalanced?'#27ae60':'#e74c3c'};color:#fff;border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:18px;font-weight:800">₹${stmtClosing.toFixed(2)}</div>
+        <div style="font-size:10px;opacity:.8;margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Bank Statement</div>
+      </div>
+    </div>
+
+    <!-- MAIN STATUS -->
+    <div style="background:${isBalanced?'#d4edda':'#fdecea'};border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">
+      <div style="font-size:22px;margin-bottom:4px">${isBalanced?'✅':'⚠️'}</div>
+      <div style="font-size:16px;font-weight:800;color:${isBalanced?'#155724':'#c0392b'}">
+        ${isBalanced ? 'RECONCILED! Books Match!' : 'NOT RECONCILED'}
+      </div>
+      ${!isBalanced ? `<div style="font-size:13px;color:#c0392b;margin-top:4px;font-weight:600">Difference: ₹${diff.toFixed(2)}</div>` : ''}
+    </div>
+
+    <!-- DETAILED COMPARISON TABLE -->
+    <div style="background:#fff;border-radius:12px;border:1px solid var(--md-outline);overflow:hidden;margin-bottom:12px">
+      <div style="background:#1a1f2e;color:#fff;padding:10px 14px;font-size:12px;font-weight:700;letter-spacing:.5px">📊 ${monthLabel} — DETAILED COMPARISON</div>
+      <table style="width:100%;font-size:12px">
+        <tr style="background:#f8f9fa">
+          <td style="padding:8px 12px;font-weight:600;color:#555">PARTICULARS</td>
+          <td style="padding:8px 12px;text-align:right;font-weight:600;color:#2980b9">MOJ BOOKS (₹)</td>
+          <td style="padding:8px 12px;text-align:right;font-weight:600;color:#27ae60">BANK STMT (₹)</td>
+        </tr>
+        <tr><td style="padding:7px 12px;border-top:1px solid #eee">Opening Balance</td>
+            <td style="padding:7px 12px;text-align:right;border-top:1px solid #eee">${mojOpenBal.toFixed(2)}</td>
+            <td style="padding:7px 12px;text-align:right;border-top:1px solid #eee">${stmtOpening.toFixed(2)}</td></tr>
+        <tr style="background:#f9f9f9">
+            <td style="padding:7px 12px;border-top:1px solid #eee">Total Receipts / Credits</td>
+            <td style="padding:7px 12px;text-align:right;border-top:1px solid #eee;color:#27ae60">+${mojReceipts.toFixed(2)}</td>
+            <td style="padding:7px 12px;text-align:right;border-top:1px solid #eee;color:#27ae60">+${stmtCredits.toFixed(2)}</td></tr>
+        <tr><td style="padding:7px 12px;border-top:1px solid #eee">Total Payments / Debits</td>
+            <td style="padding:7px 12px;text-align:right;border-top:1px solid #eee;color:#e74c3c">-${mojPayments.toFixed(2)}</td>
+            <td style="padding:7px 12px;text-align:right;border-top:1px solid #eee;color:#e74c3c">-${stmtDebits.toFixed(2)}</td></tr>
+        <tr style="background:#1a1f2e;color:#fff;font-weight:700">
+            <td style="padding:9px 12px">Closing Balance</td>
+            <td style="padding:9px 12px;text-align:right">${mojCloseBal.toFixed(2)}</td>
+            <td style="padding:9px 12px;text-align:right">${stmtClosing.toFixed(2)}</td></tr>
+      </table>
+    </div>
+
+    <!-- MOJ ENTRIES THIS MONTH -->
+    <div style="background:#fff;border-radius:12px;border:1px solid var(--md-outline);overflow:hidden;margin-bottom:12px">
+      <div style="background:#2980b9;color:#fff;padding:10px 14px;font-size:12px;font-weight:700">
+        🏦 MOJ Bank Entries — ${monthLabel} (${mojEntries.length} entries)
+      </div>
+      ${mojEntries.length === 0
+        ? '<p style="padding:12px;color:#888;font-size:12px;text-align:center">No bank entries in MOJ for this month</p>'
+        : mojEntries.map(b => `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #eee">
+          <span style="font-size:18px">${b.type==='RECEIPT'?'📥':'📤'}</span>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600">${b.party||''} ${b.desc?'— '+b.desc:''}</div>
+            <div style="font-size:11px;color:#888">${b.date} ${b.mode?'• '+b.mode:''}</div>
+          </div>
+          <div style="font-weight:700;color:${b.type==='RECEIPT'?'#27ae60':'#e74c3c'};font-size:13px">
+            ${b.type==='RECEIPT'?'+':'-'}₹${b.amount.toFixed(2)}
+          </div>
+        </div>`).join('')}
+    </div>
+
+    <!-- UNMATCHED ENTRIES -->
+    ${unmatchedMOJ.length > 0 ? `
+    <div style="background:#fff3cd;border-radius:12px;border:1px solid #ffc107;overflow:hidden;margin-bottom:12px">
+      <div style="background:#f0932b;color:#fff;padding:10px 14px;font-size:12px;font-weight:700">
+        ⚠️ In MOJ but NOT in Statement (${unmatchedMOJ.length})
+      </div>
+      ${unmatchedMOJ.map(b=>`
+        <div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #ffe08a;font-size:12px">
+          <span>${b.party||''} ${b.desc?'- '+b.desc:''} (${b.date})</span>
+          <span style="font-weight:700;color:${b.type==='RECEIPT'?'#27ae60':'#e74c3c'}">${b.type==='RECEIPT'?'+':'-'}₹${b.amount.toFixed(2)}</span>
+        </div>`).join('')}
+    </div>` : ''}
+
+    ${unmatchedStmt.length > 0 ? `
+    <div style="background:#fdecea;border-radius:12px;border:1px solid #f5c6cb;overflow:hidden;margin-bottom:12px">
+      <div style="background:#e74c3c;color:#fff;padding:10px 14px;font-size:12px;font-weight:700">
+        ⚠️ In Statement but NOT in MOJ (${unmatchedStmt.length})
+      </div>
+      ${unmatchedStmt.map(s=>`
+        <div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #f5c6cb;font-size:12px">
+          <span>${s.desc} (${s.date})</span>
+          <span style="font-weight:700;color:${s.type==='CREDIT'?'#27ae60':'#e74c3c'}">${s.type==='CREDIT'?'+':'-'}₹${s.amt.toFixed(2)}</span>
+        </div>`).join('')}
+      <div style="padding:10px 12px;font-size:11px;color:#c0392b;font-weight:600">
+        💡 These entries are missing from MOJ! Add them in Cash &amp; Bank section.
+      </div>
+    </div>` : ''}
+
+    <!-- PRINT BUTTON -->
+    <button onclick="window.print()" class="btn btn-blue btn-full" style="margin-top:4px">🖨️ Print Reconciliation Statement</button>
+  `;
+}
+</script>
 </body>
 </html>
