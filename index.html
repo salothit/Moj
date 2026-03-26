@@ -148,7 +148,7 @@ body {
   align-items: center;
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 300;
   box-shadow: 0 2px 8px rgba(0,0,0,.3);
 }
 
@@ -281,11 +281,11 @@ body {
 }
 
 /* ── PAGES ── */
-.page { display: none; animation: pageIn .18s ease; }
+.page { display: none; animation: pageIn .08s ease; }
 .page.active { display: block; }
 
 @keyframes pageIn {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
@@ -514,6 +514,7 @@ tr:hover td { background: rgba(240,147,43,.04); transition: background .15s; }
 /* ── MODAL ── */
 .modal {
   display: none;
+  pointer-events: none;
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(26,31,46,.6);
@@ -525,14 +526,15 @@ tr:hover td { background: rgba(240,147,43,.04); transition: background .15s; }
 
 .modal.open {
   display: flex;
+  pointer-events: auto;
   align-items: flex-start;
   justify-content: center;
-  animation: modalIn .2s ease;
+  animation: modalIn .1s ease;
 }
 
 @keyframes modalIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from { opacity: 0; transform: scale(.97); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 .modal-card {
@@ -1013,8 +1015,44 @@ tr[style*="background:#fff5f5"] td {
         </div>
       </div>
       <div class="form-group">
+        <label>🏭 Business Type *</label>
+        <select id="reg_biz_type" onchange="toggleCustomBizReg()" style="width:100%;padding:10px 12px;border:1.5px solid var(--md-outline);border-radius:var(--md-radius-md);font-size:14px;font-family:var(--font-ui);background:var(--md-surface)">
+          <option value="">— Select Your Business Type —</option>
+          <option value="textile">🧵 Textile / Garments / Saree</option>
+          <option value="grocery">🛒 Grocery / Kirana / Food</option>
+          <option value="electronics">📱 Electronics / Mobile / Computer</option>
+          <option value="hardware">🔧 Hardware / Building Material</option>
+          <option value="medical">💊 Medical / Pharmacy</option>
+          <option value="stationery">📚 Stationery / Books / Education</option>
+          <option value="furniture">🪑 Furniture / Home Decor</option>
+          <option value="auto">🚗 Auto Parts / Vehicle Accessories</option>
+          <option value="jewellery">💍 Jewellery / Gold / Silver</option>
+          <option value="restaurant">🍽️ Restaurant / Food / Bakery</option>
+          <option value="services">💼 Services / Consulting / IT</option>
+          <option value="agriculture">🌾 Agriculture / Seeds / Fertilizer</option>
+          <option value="footwear">👟 Footwear / Shoes / Chappals</option>
+          <option value="custom">✏️ My Business Not in List — Type My Own</option>
+        </select>
+        <div id="reg_custom_biz_div" style="display:none;margin-top:6px">
+          <input type="text" id="reg_custom_biz" placeholder="Type your business type e.g. Crockery / Toys / Cosmetics" style="width:100%;padding:10px 12px;border:1.5px solid var(--md-outline);border-radius:var(--md-radius-md);font-size:13px;font-family:var(--font-ui)">
+        </div>
+        <small style="color:var(--md-on-surface-muted);font-size:10px">✅ Product categories will auto-set based on your business type</small>
+      </div>
+      <div class="form-group">
         <label>💼 Business Tagline</label>
         <input type="text" id="reg_tagline" placeholder="e.g. Wholesalers of All Kind of Fabrics">
+      </div>
+      <div style="background:var(--md-surface-variant);border-radius:var(--md-radius-md);padding:10px 12px;margin-bottom:10px">
+        <p style="font-size:11px;font-weight:700;color:var(--md-on-surface-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">🙏 Bill Blessing Line (Optional)</p>
+        <div class="form-group" style="margin-bottom:8px">
+          <label>Left Side Blessing</label>
+          <input type="text" id="reg_blessing_left" placeholder="e.g. || JAY AMBE || or || JAI SHREE RAM ||">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Center Blessing</label>
+          <input type="text" id="reg_blessing_center" placeholder="e.g. || SHREE GANESHAY NAMAH || or leave empty">
+        </div>
+        <small style="color:var(--md-on-surface-muted);font-size:10px">These lines appear at top of every bill & challan. Leave empty to hide.</small>
       </div>
       <hr style="margin:10px 0">
       <div class="form-group">
@@ -1044,7 +1082,7 @@ tr[style*="background:#fff5f5"] td {
     <h3>⚙️ Manage Firms</h3>
     <div id="firmListDiv"></div>
     <hr style="margin:12px 0">
-    <button class="btn btn-green btn-full" onclick="document.getElementById('manageFirmsModal').classList.remove('open');showRegisterForm()">+ Add New Firm</button>
+    <button class="btn btn-green btn-full" onclick="addFirmFromManage()">+ Add New Firm</button>
   </div>
 </div>
 
@@ -1088,7 +1126,40 @@ tr[style*="background:#fff5f5"] td {
       <label>📧 Email (Optional)</label>
       <input type="email" id="edit_firm_email" placeholder="your@email.com">
     </div>
-
+    <div class="form-group">
+      <label>🏭 Business Type</label>
+      <select id="edit_biz_type" onchange="toggleCustomBizEdit()" style="width:100%;padding:10px 12px;border:1.5px solid var(--md-outline);border-radius:var(--md-radius-md);font-size:14px;font-family:var(--font-ui);background:var(--md-surface)">
+        <option value="textile">🧵 Textile / Garments / Saree</option>
+        <option value="grocery">🛒 Grocery / Kirana / Food</option>
+        <option value="electronics">📱 Electronics / Mobile / Computer</option>
+        <option value="hardware">🔧 Hardware / Building Material</option>
+        <option value="medical">💊 Medical / Pharmacy</option>
+        <option value="stationery">📚 Stationery / Books / Education</option>
+        <option value="furniture">🪑 Furniture / Home Decor</option>
+        <option value="auto">🚗 Auto Parts / Vehicle Accessories</option>
+        <option value="jewellery">💍 Jewellery / Gold / Silver</option>
+        <option value="restaurant">🍽️ Restaurant / Food / Bakery</option>
+        <option value="services">💼 Services / Consulting / IT</option>
+        <option value="agriculture">🌾 Agriculture / Seeds / Fertilizer</option>
+        <option value="footwear">👟 Footwear / Shoes / Chappals</option>
+        <option value="general">🏪 General / Other</option>
+        <option value="custom">✏️ My Business Not in List — Type My Own</option>
+      </select>
+      <div id="edit_custom_biz_div" style="display:none;margin-top:6px">
+        <input type="text" id="edit_custom_biz" placeholder="Type your business type" style="width:100%;padding:10px 12px;border:1.5px solid var(--md-outline);border-radius:var(--md-radius-md);font-size:13px;font-family:var(--font-ui)">
+      </div>
+    </div>
+    <div style="background:var(--md-surface-variant);border-radius:var(--md-radius-md);padding:10px 12px;margin-bottom:10px">
+      <p style="font-size:11px;font-weight:700;color:var(--md-on-surface-muted);margin-bottom:8px">🙏 Bill Blessing Lines</p>
+      <div class="form-group" style="margin-bottom:8px">
+        <label>Left Side Blessing</label>
+        <input type="text" id="edit_blessing_left" placeholder="|| JAY AMBE || or your faith">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Center Blessing</label>
+        <input type="text" id="edit_blessing_center" placeholder="|| SHREE GANESHAY NAMAH || or leave empty">
+      </div>
+    </div>
     <hr style="margin:12px 0">
     <div style="background:var(--md-surface-variant);border-radius:var(--md-radius-md);padding:12px;margin-bottom:10px">
       <p style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--md-on-surface-variant)">🔒 Change Password (optional)</p>
@@ -1126,6 +1197,7 @@ tr[style*="background:#fff5f5"] td {
              box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap">
       🧾 Bill <span id="floatBillCount" style="background:rgba(255,255,255,.3);border-radius:10px;padding:1px 5px;font-size:10px"></span>
     </button>
+    <button onclick="openLangModal()" style="background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35);color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-ui);letter-spacing:.3px" id="topLangBtn">🌐 EN</button>
     <button onclick="logout()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 10px;border-radius:6px;font-size:12px">Logout</button>
   </div>
 </div>
@@ -1798,6 +1870,52 @@ Setup Opening Capital Structure
 
 </div><!-- end mainApp -->
 
+<!-- ════ ADD CATEGORY MODAL ════ -->
+<div id="addCategoryModal" class="modal" style="z-index:500;backdrop-filter:none;background:rgba(26,31,46,.7)">
+  <div class="modal-card" style="max-width:360px">
+    <button class="modal-close" onclick="closeAddCategoryModal()">×</button>
+    <h3 style="margin-bottom:6px">➕ Add New Category</h3>
+    <p style="font-size:12px;color:var(--md-on-surface-muted);margin-bottom:16px">Add a custom category for your products. It will be saved and available every time.</p>
+
+    <!-- existing custom categories list -->
+    <div id="existingCatsList" style="margin-bottom:14px;display:none">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--md-on-surface-variant);margin-bottom:8px">Your Custom Categories</p>
+      <div id="existingCatsChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      <hr style="margin:12px 0">
+    </div>
+
+    <div class="form-group" style="margin-bottom:10px">
+      <label>New Category Name</label>
+      <input type="text" id="newCatInput" placeholder="e.g. Silk Saree, Kids Wear, Lehenga Set..."
+        onkeydown="if(event.key==='Enter')saveNewCategory()"
+        style="font-size:15px;font-weight:600">
+    </div>
+
+    <!-- Quick suggestion chips -->
+    <div style="margin-bottom:14px">
+      <p style="font-size:11px;font-weight:600;color:var(--md-on-surface-muted);margin-bottom:7px">Quick add:</p>
+      <div style="display:flex;flex-wrap:wrap;gap:6px" id="catSuggestions"></div>
+    </div>
+
+    <div id="addCatError" style="background:var(--md-error-container);color:var(--md-error);padding:8px 12px;border-radius:var(--md-radius-sm);font-size:13px;margin-bottom:10px;display:none"></div>
+
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-green" style="flex:1" onclick="saveNewCategory()">✅ Save Category</button>
+      <button class="btn" style="flex:0 0 auto;background:var(--md-surface-variant);color:var(--md-on-surface-variant)" onclick="closeAddCategoryModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ LANGUAGE MODAL ════ -->
+<div id="langModal" class="modal" style="z-index:500;backdrop-filter:none;background:rgba(26,31,46,.8)">
+  <div class="modal-card" style="max-width:400px;width:100%">
+    <button class="modal-close" onclick="closeLangModal()">×</button>
+    <h3 style="margin-bottom:2px">🌐 Select Language / भाषा चुनें</h3>
+    <p style="font-size:11px;color:var(--md-on-surface-muted);margin-bottom:14px">ભાષા પસંદ કરો • ভাষা বেছে নিন • மொழியை தேர்ந்தெடு</p>
+    <div id="langBtnGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:65vh;overflow-y:auto;padding-right:2px"></div>
+  </div>
+</div>
+
 <!-- ════ FLOATING BILL BASKET — persists across both pages ════ -->
 <div id="billBasket" style="display:none;position:fixed;bottom:62px;left:0;right:0;z-index:99;padding:0 10px">
   <div style="background:linear-gradient(135deg,#27ae60,#2ecc71);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 20px rgba(0,0,0,.3)">
@@ -1828,6 +1946,10 @@ Setup Opening Capital Structure
         <option>Dupatta</option><option>Kurti</option><option>Fabric</option>
         <option>Blouse Piece</option><option>Other</option>
       </select>
+      <!-- Add Category inline button -->
+      <button type="button" onclick="openAddCategoryModal()" style="margin-top:7px;width:100%;background:var(--md-primary-container);border:1.5px dashed var(--md-primary);border-radius:var(--md-radius-md);color:var(--md-primary);padding:9px 14px;font-size:13px;font-weight:700;font-family:var(--font-ui);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s;">
+        ➕ Add New Category
+      </button>
     </div>
     <div style="display:flex;gap:8px">
       <div class="form-group" style="flex:1;margin-bottom:10px">
@@ -2084,14 +2206,21 @@ function getDefaultFirms(){
      address:'L-27, Basement, Bombay Market, Umarwada, Surat - 395010',
      phone:'9426079540', phone2:'9328932532',
      tagline:'MANUFACTURER & TRADERS OF FANCY AND DESIGNER CHANIYA CHOLI AND SAREES',
-     email:'', website:'', created: new Date().toISOString()},
+     email:'', website:'', businessType:'textile',
+     blessingLeft:'|| JAY AMBE ||',
+     blessingCenter:'|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||',
+     created: new Date().toISOString()},
     {id:'CHINTAMANI_SAREE', name:'CHINTAMANI SAREE', owner:'', pass:'chinta123', fy:'2024-25',
      address:'L-27, Upper, Bombay Market, Umarwada, Surat - 395010',
      phone:'9426079540', phone2:'9328932532',
      tagline:'Wholesalers All Kind of Sarees',
-     email:'', website:'', created: new Date().toISOString()},
+     email:'', website:'', businessType:'textile',
+     blessingLeft:'|| JAY AMBE ||',
+     blessingCenter:'|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||',
+     created: new Date().toISOString()},
     {id:'MOJ_CREATIVE', name:'MOJ CREATIVE', owner:'', pass:'moj123', fy:'2024-25',
      address:'', phone:'', phone2:'', tagline:'', email:'', website:'',
+     businessType:'general', blessingLeft:'', blessingCenter:'',
      created: new Date().toISOString()},
   ];
   localStorage.setItem('MOJ_FIRMS', JSON.stringify(defaults));
@@ -2185,9 +2314,28 @@ function registerFirm(){
   const id = name.toUpperCase().replace(/[^A-Z0-9]/g,'_').replace(/__+/g,'_');
   if(firms.find(f=>f.id===id)){ err.textContent='Firm with this name already exists'; err.style.display='block'; return; }
 
+  const bLeft   = document.getElementById('reg_blessing_left')   ? document.getElementById('reg_blessing_left').value.trim()   : '';
+  const bCenter = document.getElementById('reg_blessing_center') ? document.getElementById('reg_blessing_center').value.trim() : '';
+  let bizType   = document.getElementById('reg_biz_type')        ? document.getElementById('reg_biz_type').value                : 'general';
+  // Handle custom business type
+  if(bizType === 'custom'){
+    const customBiz = document.getElementById('reg_custom_biz') ? document.getElementById('reg_custom_biz').value.trim() : '';
+    bizType = customBiz ? 'custom_'+customBiz.toLowerCase().replace(/\s+/g,'_') : 'general';
+    // Add custom biz to BUSINESS_CATEGORIES
+    if(customBiz && typeof BUSINESS_CATEGORIES !== 'undefined'){
+      BUSINESS_CATEGORIES[bizType] = {
+        label: customBiz, icon: '🏪',
+        cats: [customBiz+' Item 1', customBiz+' Item 2', 'Other '+customBiz]
+      };
+    }
+  }
+  if(!bizType) bizType = 'general';
+  const phone2v = document.getElementById('reg_phone2')          ? document.getElementById('reg_phone2').value.trim()           : '';
   firms.push({
     id, name: name.toUpperCase(), owner, pass,
-    address, phone, phone2:'', tagline, email:'',
+    address, phone, phone2: phone2v, tagline, email:'',
+    businessType: bizType,
+    blessingLeft: bLeft, blessingCenter: bCenter,
     fy: getCurrentFYLabel(), created: new Date().toISOString()
   });
   saveFirms(firms);
@@ -2266,7 +2414,10 @@ function openEditFirm(id){
   if(el('edit_old_pass'))     el('edit_old_pass').value     = '';
   if(el('edit_new_pass'))     el('edit_new_pass').value     = '';
   if(el('edit_new_pass2'))    el('edit_new_pass2').value    = '';
-  if(el('editFirmErr'))       el('editFirmErr').style.display='none';
+  if(el('edit_biz_type'))       el('edit_biz_type').value       = firm.businessType||'general';
+  if(el('edit_blessing_left'))  el('edit_blessing_left').value  = firm.blessingLeft||'';
+  if(el('edit_blessing_center'))el('edit_blessing_center').value= firm.blessingCenter||'';
+  if(el('editFirmErr'))         el('editFirmErr').style.display = 'none';
   document.getElementById('manageFirmsModal').classList.remove('open');
   openModal('editFirmModal');
 }
@@ -2298,13 +2449,19 @@ function saveEditFirm(){
     firms[idx].pass = newPass;
   }
 
-  firms[idx].name     = newName;
-  firms[idx].owner    = newOwner;
-  firms[idx].address  = newAddr;
-  firms[idx].phone    = newPhone;
-  firms[idx].phone2   = newPhone2;
-  firms[idx].tagline  = newTagline;
-  firms[idx].email    = newEmail;
+  const newBLeft   = document.getElementById('edit_blessing_left')   ? document.getElementById('edit_blessing_left').value.trim()   : firms[idx].blessingLeft||'';
+  const newBCenter = document.getElementById('edit_blessing_center') ? document.getElementById('edit_blessing_center').value.trim() : firms[idx].blessingCenter||'';
+  const newBizType = document.getElementById('edit_biz_type')        ? document.getElementById('edit_biz_type').value               : firms[idx].businessType||'general';
+  firms[idx].name          = newName;
+  firms[idx].owner         = newOwner;
+  firms[idx].address       = newAddr;
+  firms[idx].phone         = newPhone;
+  firms[idx].phone2        = newPhone2;
+  firms[idx].tagline       = newTagline;
+  firms[idx].email         = newEmail;
+  firms[idx].businessType  = newBizType;
+  firms[idx].blessingLeft  = newBLeft;
+  firms[idx].blessingCenter= newBCenter;
   saveFirms(firms);
   populateLoginDropdown();
   closeModal('editFirmModal');
@@ -4734,8 +4891,8 @@ table{width:100%;border-collapse:collapse}
 
 <!-- TOP -->
 <table style="border-bottom:1px solid #000;margin-bottom:4px"><tr>
-  <td style="font-size:10px">|| JAY AMBE ||</td>
-  <td style="text-align:center;font-size:10px">|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||</td>
+  <td style="font-size:10px">${getMyBlessingLeft()}</td>
+  <td style="text-align:center;font-size:10px">${getMyBlessingCenter()}</td>
   <td style="text-align:right;font-size:10px">${getMyPhone()||''}<br>${getMyPhone2()||''}</td>
 </tr></table>
 
@@ -5417,8 +5574,8 @@ table{width:100%;border-collapse:collapse}
 
 <!-- HEADER RED BAR -->
 <table style="background:#c0392b;color:#fff;border-bottom:none"><tr>
-  <td style="padding:3px 6px;font-size:9px;width:20%">|| JAY AMBE ||</td>
-  <td style="text-align:center;font-size:9px">|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||</td>
+  <td style="padding:3px 6px;font-size:9px;width:20%">${getMyBlessingLeft()}</td>
+  <td style="text-align:center;font-size:9px">${getMyBlessingCenter()}</td>
   <td style="text-align:right;padding:3px 6px;font-size:9px;width:22%">${getMyPhone()?getMyPhone():''}${getMyPhone2()?'<br>'+getMyPhone2():''}</td>
 </tr></table>
 
@@ -6048,8 +6205,8 @@ function shareBillPDF(bno){
   const html = `
     <div style="max-width:190mm;margin:0 auto;font-family:Arial,sans-serif;font-size:11px;background:#fff;padding:8px">
       <table style="width:100%;border-bottom:1px solid #000;margin-bottom:4px;border-collapse:collapse"><tr>
-        <td style="font-size:9px;padding:2px">|| JAY AMBE ||</td>
-        <td style="text-align:center;font-size:9px;padding:2px">|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||</td>
+        <td style="font-size:9px;padding:2px">${getMyBlessingLeft()}</td>
+        <td style="text-align:center;font-size:9px;padding:2px">${getMyBlessingCenter()}</td>
         <td style="text-align:right;font-size:9px;padding:2px">${getMyPhone()||''}<br>${getMyPhone2()||''}</td>
       </tr></table>
       <div style="text-align:center;font-size:20px;font-weight:900;padding:3px 0">${company}</div>
@@ -6166,8 +6323,8 @@ function shareDCPDF(dcno){
   const html = `
     <div style="max-width:148mm;margin:0 auto;font-family:Arial,sans-serif;font-size:11px">
       <table style="width:100%;background:#c0392b;color:#fff"><tr>
-        <td style="padding:3px 6px;font-size:9px">|| JAY AMBE ||</td>
-        <td style="text-align:center;font-size:9px">|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||</td>
+        <td style="padding:3px 6px;font-size:9px">${getMyBlessingLeft()}</td>
+        <td style="text-align:center;font-size:9px">${getMyBlessingCenter()}</td>
         <td style="text-align:right;padding:3px 6px;font-size:9px">${getMyPhone2()?'M.: '+getMyPhone2():''}<br>${getMyPhone()||''}</td>
       </tr></table>
       <div style="text-align:center;padding:5px 0;border-bottom:2px solid #c0392b">
@@ -7408,8 +7565,8 @@ table{width:100%;border-collapse:collapse}
 <div class="page">
 
 <table style="border-bottom:1px solid #000;margin-bottom:4px"><tr>
-  <td style="font-size:10px">|| JAY AMBE ||</td>
-  <td style="text-align:center;font-size:10px">|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||</td>
+  <td style="font-size:10px">${getMyBlessingLeft()}</td>
+  <td style="text-align:center;font-size:10px">${getMyBlessingCenter()}</td>
   <td style="text-align:right;font-size:10px">${getMyPhone()||''}<br>${getMyPhone2()||''}</td>
 </tr></table>
 
@@ -7751,29 +7908,11 @@ document.addEventListener('touchend', function(e) {
 function exportAllData() {
   if (typeof CU === 'undefined' || !CU) { mdToast('Please login first'); return; }
   const data = {};
-
-  // ── Array-based keys (stored as JSON arrays) ──
-  const arrayKeys = ['sales','purchases','cash','bank','ledger','parties','jangads','dcs','saleReturns','purReturns','income','expense','assets','journal'];
-  arrayKeys.forEach(k => {
-    try { data[k] = JSON.parse(localStorage.getItem(CU + '_' + k) || '[]'); } catch(e) { data[k] = []; }
-  });
-
-  // ── Scalar / string keys (stored as plain strings) ──
-  const scalarKeys = ['opening_cash','opening_bank','capital','active_fy','gst_gstin','gst_state','gst_sc','gst_bank','gst_addr'];
-  scalarKeys.forEach(k => {
-    const val = localStorage.getItem(CU + '_' + k);
-    if (val !== null) data['__' + k] = val;
-  });
-
-  // ── Shared / global keys ──
+  const keys = ['sales','purchases','cash','bank','ledger','parties','jangads','dcs','saleReturns','purReturns','income','expense','assets'];
+  keys.forEach(k => { try { data[k] = JSON.parse(localStorage.getItem(CU + '_' + k) || '[]'); } catch(e) {} });
   data['SHARED_products'] = JSON.parse(localStorage.getItem('SHARED_products') || '[]');
-  const firms = localStorage.getItem('MOJ_FIRMS');
-  if (firms) data['__MOJ_FIRMS'] = firms; // raw string, already JSON
-
-  // ── Metadata ──
   data['_exported'] = new Date().toISOString();
   data['_user'] = CU;
-
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -7797,29 +7936,14 @@ function importAllData() {
         const data = JSON.parse(ev.target.result);
         if (!data._user) { mdToast('❌ Invalid backup file'); return; }
         const prefix = data._user;
-
         Object.keys(data).forEach(k => {
-          if (k === '_exported' || k === '_user') return; // skip metadata
-
-          if (k === '__MOJ_FIRMS') {
-            // Restore global firms list (value is already a JSON string)
-            localStorage.setItem('MOJ_FIRMS', data[k]);
-
-          } else if (k.startsWith('SHARED_')) {
-            // Restore shared keys (products, etc.)
+          if (k.startsWith('_')) return;
+          if (k.startsWith('SHARED_')) {
             localStorage.setItem(k, JSON.stringify(data[k]));
-
-          } else if (k.startsWith('__')) {
-            // Restore scalar keys — strip the __ prefix, store as plain string
-            const realKey = k.slice(2); // e.g. 'opening_cash'
-            localStorage.setItem(prefix + '_' + realKey, data[k]);
-
           } else {
-            // Restore array-based keys
             localStorage.setItem(prefix + '_' + k, JSON.stringify(data[k]));
           }
         });
-
         mdToast('✅ Data restored! Please refresh.', 3000);
         setTimeout(() => window.location.reload(), 2000);
       } catch(e) {
@@ -8493,6 +8617,1339 @@ function runBankRecon(){
     <!-- PRINT BUTTON -->
     <button onclick="window.print()" class="btn btn-blue btn-full" style="margin-top:4px">🖨️ Print Reconciliation Statement</button>
   `;
+}
+</script>
+
+<!-- ════ FEATURE: BUSINESS CATEGORIES + LANGUAGE + BLESSING ════ -->
+<script>
+
+// ═══════════════════════════════════════
+//  BUSINESS TYPE → PRODUCT CATEGORIES
+// ═══════════════════════════════════════
+const BUSINESS_CATEGORIES = {
+  'textile': {
+    label: 'Textile / Garments / Saree',
+    icon: '🧵',
+    cats: ['Saree','Chaniya Choli','Lehenga','Dupatta','Kurti','Fabric','Blouse Piece',
+           'Suit Material','Shawl','Stole','Dress Material','Readymade Garments','Other Textile']
+  },
+  'grocery': {
+    label: 'Grocery / Kirana / Food',
+    icon: '🛒',
+    cats: ['Rice','Wheat/Flour','Dal & Pulses','Cooking Oil','Sugar & Salt','Spices & Masala',
+           'Dry Fruits','Biscuits & Snacks','Beverages','Dairy Products','Packed Food','Cleaning Products','Other Grocery']
+  },
+  'electronics': {
+    label: 'Electronics / Mobile / Computer',
+    icon: '📱',
+    cats: ['Mobile Phones','Mobile Accessories','Laptops','Computers & Parts','TVs & Monitors',
+           'Earphones & Speakers','Cables & Chargers','Smart Watches','Printers','Other Electronics']
+  },
+  'hardware': {
+    label: 'Hardware / Building Material',
+    icon: '🔧',
+    cats: ['Cement','Steel & Iron','Pipes & Fittings','Paint','Tiles & Marble','Wood & Plywood',
+           'Electrical Items','Sanitary Fittings','Glass','Tools','Other Hardware']
+  },
+  'medical': {
+    label: 'Medical / Pharmacy',
+    icon: '💊',
+    cats: ['Medicines (Tablet/Syrup)','Surgical Items','Baby Products','Health Supplements',
+           'Skin Care','Injections','Medical Equipment','Protein Supplements','Other Medical']
+  },
+  'stationery': {
+    label: 'Stationery / Books',
+    icon: '📚',
+    cats: ['Notebooks & Copies','Pens & Pencils','Files & Folders','Art & Craft',
+           'Books & Textbooks','Bags','School Supplies','Office Stationery','Other Stationery']
+  },
+  'furniture': {
+    label: 'Furniture / Home Decor',
+    icon: '🪑',
+    cats: ['Sofa & Chairs','Beds & Mattresses','Tables & Desks','Wardrobes','Curtains',
+           'Decor Items','Kitchen Furniture','Office Furniture','Other Furniture']
+  },
+  'auto': {
+    label: 'Auto Parts / Vehicle',
+    icon: '🚗',
+    cats: ['Engine Parts','Tyres & Tubes','Battery','Filters','Oils & Lubricants',
+           'Lights & Electrical','Body Parts','Two Wheeler Parts','Other Auto Parts']
+  },
+  'jewellery': {
+    label: 'Jewellery / Gold / Silver',
+    icon: '💍',
+    cats: ['Gold Jewellery','Silver Jewellery','Artificial Jewellery','Diamond',
+           'Watches','Bangles','Chains','Rings','Other Jewellery']
+  },
+  'restaurant': {
+    label: 'Restaurant / Food Service / Bakery',
+    icon: '🍽️',
+    cats: ['Veg Food Items','Non-Veg Items','Beverages & Drinks','Sweets & Mithai',
+           'Bakery Items','Snacks','Thali & Combos','Catering Service','Other Food']
+  },
+  'services': {
+    label: 'Services / Consulting / IT',
+    icon: '💼',
+    cats: ['Consulting Fees','Software Development','Website Design','Accounting Service',
+           'Legal Service','Repair & Maintenance','Transportation','Labour Charges','Other Services']
+  },
+  'agriculture': {
+    label: 'Agriculture / Seeds / Fertilizer',
+    icon: '🌾',
+    cats: ['Seeds','Fertilizers','Pesticides','Farm Equipment','Irrigation Parts',
+           'Organic Products','Animal Feed','Vegetables','Fruits','Other Agriculture']
+  },
+  'footwear': {
+    label: 'Footwear / Shoes / Chappals',
+    icon: '👟',
+    cats: ['Gents Shoes','Ladies Shoes','Kids Shoes','Sandals & Chappals',
+           'Sports Shoes','Formal Shoes','Casual Shoes','School Shoes','Other Footwear']
+  },
+  'general': {
+    label: 'General / Mixed Business / Other',
+    icon: '🏪',
+    cats: ['Product A','Product B','Service A','Service B','Item 1','Item 2','Other']
+  }
+};
+
+function getBusinessType(){
+  const f = getFirmProfile();
+  return f.businessType || 'textile';
+}
+
+function getCategoriesForType(type){
+  const bt = BUSINESS_CATEGORIES[type] || BUSINESS_CATEGORIES['general'];
+  return bt.cats;
+}
+
+// getAllCustomCategories, saveCustomCategories, getAllCategories, addCustomCategory
+// are defined in the ADD CATEGORY MODAL section below (unified system)
+
+// Populate category dropdown dynamically
+function fillCategorySelect(id){
+  const sel = document.getElementById(id);
+  if(!sel) return;
+  const cats = _safeGetAllCats();
+  const cur = sel.value; // preserve current selection
+  sel.innerHTML = '<option value="">— Select Category —</option>' +
+    cats.map(c => `<option value="${c}"${c===cur?' selected':''}>${c}</option>`).join('');
+}
+
+function addCustomCategory(catName){
+  return _safeAddCat(catName);
+}
+
+
+// ═══════════════════════════════════════
+//  MULTI-LANGUAGE SUPPORT
+// ═══════════════════════════════════════
+const TRANSLATIONS = {
+  en: {
+    name:'English', nativeName:'English', flag:'🇬🇧', region:'International',
+    dashboard:'Dashboard', products:'Products', parties:'Parties',
+    sales:'Sales', more:'More', home:'Home',
+    totalSales:'Total Sales', totalPurchase:'Total Purchase',
+    cashBalance:'Cash Balance', stockValue:'Stock Value',
+    recentSales:'Recent Sales', lowStock:'Low Stock Alert',
+    noSalesYet:'No sales yet', allStockOk:'✅ All stock levels OK',
+    addCapital:'Add Capital', ownerDrawings:'Owner Drawings',
+    newSale:'+ New Sale', newPurchase:'+ New Purchase',
+    saveBtn:'💾 Save Bill', loginBtn:'Login',
+    selectFirm:'Select Firm', password:'Password',
+    createNewFirm:'+ Create New Firm', logout:'Logout',
+    search:'Search...', addProduct:'+ Add Product',
+    addParty:'+ Add Party', generateReport:'Generate Report',
+    trialBalance:'Trial Balance', stockReport:'Stock Report',
+    financialReport:'📈 Financial Report',
+    partyLedger:'📒 Party Ledger', outstanding:'📊 Outstanding',
+    cashTransactions:'💵 Cash Transactions', bankTransactions:'🏦 Bank Transactions',
+    addCashEntry:'+ Add Cash Entry', addBankEntry:'+ Add Bank Entry',
+    purchase:'Purchase', jangad:'Jangad', dc:'Delivery Challan',
+    gstModule:'GST Module', bankRecon:'Bank Reconciliation',
+    returns:'Sale/Purchase Return', incomeExpense:'Income & Expense',
+  },
+  hi: {
+    name:'Hindi', nativeName:'हिंदी', flag:'🇮🇳', region:'North India',
+    dashboard:'डैशबोर्ड', products:'उत्पाद', parties:'पार्टियां',
+    sales:'बिक्री', more:'अधिक', home:'होम',
+    totalSales:'कुल बिक्री', totalPurchase:'कुल खरीद',
+    cashBalance:'नकद शेष', stockValue:'स्टॉक मूल्य',
+    recentSales:'हालिया बिक्री', lowStock:'कम स्टॉक अलर्ट',
+    noSalesYet:'अभी कोई बिक्री नहीं', allStockOk:'✅ सभी स्टॉक ठीक हैं',
+    addCapital:'पूंजी जोड़ें', ownerDrawings:'मालिक की निकासी',
+    newSale:'+ नई बिक्री', newPurchase:'+ नई खरीद',
+    saveBtn:'💾 बिल सेव करें', loginBtn:'लॉगिन',
+    selectFirm:'फर्म चुनें', password:'पासवर्ड',
+    createNewFirm:'+ नई फर्म बनाएं', logout:'लॉगआउट',
+    search:'खोजें...', addProduct:'+ उत्पाद जोड़ें',
+    addParty:'+ पार्टी जोड़ें', generateReport:'रिपोर्ट बनाएं',
+    trialBalance:'ट्रायल बैलेंस', stockReport:'स्टॉक रिपोर्ट',
+    financialReport:'📈 वित्तीय रिपोर्ट',
+    partyLedger:'📒 पार्टी खाता', outstanding:'📊 बकाया',
+    cashTransactions:'💵 नकद लेनदेन', bankTransactions:'🏦 बैंक लेनदेन',
+    addCashEntry:'+ नकद एंट्री', addBankEntry:'+ बैंक एंट्री',
+    purchase:'खरीद', jangad:'जांगड़', dc:'डिलीवरी चालान',
+    gstModule:'GST मॉड्यूल', bankRecon:'बैंक समाधान',
+    returns:'वापसी', incomeExpense:'आय और व्यय',
+  },
+  gu: {
+    name:'Gujarati', nativeName:'ગુજરાતી', flag:'🇮🇳', region:'Gujarat',
+    dashboard:'ડૅશબૉર્ડ', products:'ઉત્પાદનો', parties:'પાર્ટીઓ',
+    sales:'વેચાણ', more:'વધુ', home:'હોમ',
+    totalSales:'કુલ વેચાણ', totalPurchase:'કુલ ખરીદી',
+    cashBalance:'રોકડ બૅલેન્સ', stockValue:'સ્ટૉક મૂલ્ય',
+    recentSales:'તાજેતરના વેચાણ', lowStock:'ઓછો સ્ટૉક ચેતવણી',
+    noSalesYet:'હજી કોઈ વેચાણ નથી', allStockOk:'✅ બધો સ્ટૉક ઠીક છે',
+    addCapital:'મૂડી ઉમેરો', ownerDrawings:'માલિકની ઉપાડ',
+    newSale:'+ નવું વેચાણ', newPurchase:'+ નવી ખરીદી',
+    saveBtn:'💾 બિલ સેવ કરો', loginBtn:'લૉગિન',
+    selectFirm:'ફર્મ પસંદ કરો', password:'પાસવર્ડ',
+    createNewFirm:'+ નવી ફર્મ બનાવો', logout:'લૉગઆઉટ',
+    search:'શોધો...', addProduct:'+ ઉત્પાદન ઉમેરો',
+    addParty:'+ પાર્ટી ઉમેરો', generateReport:'રિપોર્ટ બનાવો',
+    trialBalance:'ટ્રાયલ બૅલેન્સ', stockReport:'સ્ટૉક રિપોર્ટ',
+    financialReport:'📈 નાણાકીય રિપોર્ટ',
+    partyLedger:'📒 પાર્ટી ખાતું', outstanding:'📊 બાકી',
+    cashTransactions:'💵 રોકડ વ્યવહાર', bankTransactions:'🏦 બૅન્ક વ્યવહાર',
+    addCashEntry:'+ રોકડ એન્ટ્રી', addBankEntry:'+ બૅન્ક એન્ટ્રી',
+    purchase:'ખરીદી', jangad:'જાંગડ', dc:'ડિલિવરી ચલાણ',
+    gstModule:'GST મૉડ્યૂલ', bankRecon:'બૅન્ક સમાધાન',
+    returns:'પરત', incomeExpense:'આવક અને ખર્ચ',
+  },
+  mr: {
+    name:'Marathi', nativeName:'मराठी', flag:'🇮🇳', region:'Maharashtra',
+    dashboard:'डॅशबोर्ड', products:'उत्पादने', parties:'पक्ष',
+    sales:'विक्री', more:'अधिक', home:'मुख्यपृष्ठ',
+    totalSales:'एकूण विक्री', totalPurchase:'एकूण खरेदी',
+    cashBalance:'रोख शिल्लक', stockValue:'साठा मूल्य',
+    recentSales:'अलीकडील विक्री', lowStock:'कमी साठा सूचना',
+    noSalesYet:'अजून विक्री नाही', allStockOk:'✅ सर्व साठा ठीक आहे',
+    addCapital:'भांडवल जोडा', ownerDrawings:'मालकाचे उचल',
+    newSale:'+ नवीन विक्री', newPurchase:'+ नवीन खरेदी',
+    saveBtn:'💾 बिल सेव्ह करा', loginBtn:'लॉगिन',
+    selectFirm:'फर्म निवडा', password:'पासवर्ड',
+    createNewFirm:'+ नवीन फर्म तयार करा', logout:'लॉगआउट',
+    search:'शोधा...', addProduct:'+ उत्पादन जोडा',
+    addParty:'+ पक्ष जोडा', generateReport:'अहवाल तयार करा',
+    trialBalance:'ट्रायल बॅलन्स', stockReport:'साठा अहवाल',
+    financialReport:'📈 आर्थिक अहवाल',
+    partyLedger:'📒 पक्ष खातेवही', outstanding:'📊 थकबाकी',
+    cashTransactions:'💵 रोख व्यवहार', bankTransactions:'🏦 बँक व्यवहार',
+    addCashEntry:'+ रोख एंट्री', addBankEntry:'+ बँक एंट्री',
+    purchase:'खरेदी', jangad:'जांगड', dc:'डिलिव्हरी चलन',
+    gstModule:'GST मॉड्यूल', bankRecon:'बँक जुळवणी',
+    returns:'परतावा', incomeExpense:'उत्पन्न आणि खर्च',
+  },
+  bn: {
+    name:'Bengali', nativeName:'বাংলা', flag:'🇮🇳', region:'West Bengal',
+    dashboard:'ড্যাশবোর্ড', products:'পণ্য', parties:'পার্টি',
+    sales:'বিক্রয়', more:'আরও', home:'হোম',
+    totalSales:'মোট বিক্রয়', totalPurchase:'মোট ক্রয়',
+    cashBalance:'নগদ ব্যালেন্স', stockValue:'স্টক মূল্য',
+    recentSales:'সাম্প্রতিক বিক্রয়', lowStock:'কম স্টক সতর্কতা',
+    noSalesYet:'এখনো কোনো বিক্রয় নেই', allStockOk:'✅ সব স্টক ঠিক আছে',
+    addCapital:'মূলধন যোগ করুন', ownerDrawings:'মালিকের উত্তোলন',
+    newSale:'+ নতুন বিক্রয়', newPurchase:'+ নতুন ক্রয়',
+    saveBtn:'💾 বিল সেভ করুন', loginBtn:'লগইন',
+    selectFirm:'ফার্ম বেছে নিন', password:'পাসওয়ার্ড',
+    createNewFirm:'+ নতুন ফার্ম তৈরি করুন', logout:'লগআউট',
+    search:'খুঁজুন...', addProduct:'+ পণ্য যোগ করুন',
+    addParty:'+ পার্টি যোগ করুন', generateReport:'রিপোর্ট তৈরি করুন',
+    trialBalance:'ট্রায়াল ব্যালেন্স', stockReport:'স্টক রিপোর্ট',
+    financialReport:'📈 আর্থিক রিপোর্ট',
+    partyLedger:'📒 পার্টি লেজার', outstanding:'📊 বকেয়া',
+    cashTransactions:'💵 নগদ লেনদেন', bankTransactions:'🏦 ব্যাংক লেনদেন',
+    addCashEntry:'+ নগদ এন্ট্রি', addBankEntry:'+ ব্যাংক এন্ট্রি',
+    purchase:'ক্রয়', jangad:'জাংগড', dc:'ডেলিভারি চালান',
+    gstModule:'GST মডিউল', bankRecon:'ব্যাংক রিকনসিলিয়েশন',
+    returns:'রিটার্ন', incomeExpense:'আয় ও ব্যয়',
+  },
+  ta: {
+    name:'Tamil', nativeName:'தமிழ்', flag:'🇮🇳', region:'Tamil Nadu',
+    dashboard:'டாஷ்போர்டு', products:'பொருட்கள்', parties:'கட்சிகள்',
+    sales:'விற்பனை', more:'மேலும்', home:'முகப்பு',
+    totalSales:'மொத்த விற்பனை', totalPurchase:'மொத்த கொள்முதல்',
+    cashBalance:'பண இருப்பு', stockValue:'சரக்கு மதிப்பு',
+    recentSales:'சமீபத்திய விற்பனை', lowStock:'குறைந்த சரக்கு எச்சரிக்கை',
+    noSalesYet:'இன்னும் விற்பனை இல்லை', allStockOk:'✅ அனைத்து சரக்கும் சரி',
+    addCapital:'மூலதனம் சேர்க்க', ownerDrawings:'உரிமையாளர் எடுத்தது',
+    newSale:'+ புதிய விற்பனை', newPurchase:'+ புதிய கொள்முதல்',
+    saveBtn:'💾 பில் சேமி', loginBtn:'உள்நுழை',
+    selectFirm:'நிறுவனம் தேர்ந்தெடு', password:'கடவுச்சொல்',
+    createNewFirm:'+ புதிய நிறுவனம்', logout:'வெளியேறு',
+    search:'தேடு...', addProduct:'+ பொருள் சேர்க்க',
+    addParty:'+ கட்சி சேர்க்க', generateReport:'அறிக்கை உருவாக்கு',
+    trialBalance:'சோதனை இருப்பு', stockReport:'சரக்கு அறிக்கை',
+    financialReport:'📈 நிதி அறிக்கை',
+    partyLedger:'📒 கட்சி லெட்ஜர்', outstanding:'📊 நிலுவை',
+    cashTransactions:'💵 பண பரிவர்த்தனை', bankTransactions:'🏦 வங்கி பரிவர்த்தனை',
+    addCashEntry:'+ பண உள்ளீடு', addBankEntry:'+ வங்கி உள்ளீடு',
+    purchase:'கொள்முதல்', jangad:'ஜாங்கட்', dc:'டெலிவரி சலான்',
+    gstModule:'GST தொகுதி', bankRecon:'வங்கி சரிபார்ப்பு',
+    returns:'திரும்பல்', incomeExpense:'வருமானம் & செலவு',
+  },
+  te: {
+    name:'Telugu', nativeName:'తెలుగు', flag:'🇮🇳', region:'Andhra / Telangana',
+    dashboard:'డాష్‌బోర్డ్', products:'ఉత్పత్తులు', parties:'పార్టీలు',
+    sales:'అమ్మకాలు', more:'మరిన్ని', home:'హోమ్',
+    totalSales:'మొత్తం అమ్మకాలు', totalPurchase:'మొత్తం కొనుగోళ్లు',
+    cashBalance:'నగదు నిల్వ', stockValue:'స్టాక్ విలువ',
+    recentSales:'ఇటీవలి అమ్మకాలు', lowStock:'తక్కువ స్టాక్ హెచ్చరిక',
+    noSalesYet:'ఇంకా అమ్మకాలు లేవు', allStockOk:'✅ అన్ని స్టాక్ సరిగ్గా ఉంది',
+    addCapital:'మూలధనం జోడించు', ownerDrawings:'యజమాని ఉపసంహరణ',
+    newSale:'+ కొత్త అమ్మకం', newPurchase:'+ కొత్త కొనుగోలు',
+    saveBtn:'💾 బిల్లు సేవ్ చేయి', loginBtn:'లాగిన్',
+    selectFirm:'సంస్థ ఎంచుకో', password:'పాస్‌వర్డ్',
+    createNewFirm:'+ కొత్త సంస్థ', logout:'లాగ్అవుట్',
+    search:'వెతుకు...', addProduct:'+ ఉత్పత్తి జోడించు',
+    addParty:'+ పార్టీ జోడించు', generateReport:'నివేదిక రూపొందించు',
+    trialBalance:'ట్రయల్ బ్యాలెన్స్', stockReport:'స్టాక్ నివేదిక',
+    financialReport:'📈 ఆర్థిక నివేదిక',
+    partyLedger:'📒 పార్టీ లెడ్జర్', outstanding:'📊 బకాయి',
+    cashTransactions:'💵 నగదు లావాదేవీలు', bankTransactions:'🏦 బ్యాంకు లావాదేవీలు',
+    addCashEntry:'+ నగదు ఎంట్రీ', addBankEntry:'+ బ్యాంకు ఎంట్రీ',
+    purchase:'కొనుగోలు', jangad:'జాంగడ్', dc:'డెలివరీ చలాన్',
+    gstModule:'GST మాడ్యూల్', bankRecon:'బ్యాంకు రీకాన్సిలియేషన్',
+    returns:'రిటర్న్స్', incomeExpense:'ఆదాయం & వ్యయం',
+  },
+  kn: {
+    name:'Kannada', nativeName:'ಕನ್ನಡ', flag:'🇮🇳', region:'Karnataka',
+    dashboard:'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್', products:'ಉತ್ಪನ್ನಗಳು', parties:'ಪಕ್ಷಗಳು',
+    sales:'ಮಾರಾಟ', more:'ಇನ್ನಷ್ಟು', home:'ಮನೆ',
+    totalSales:'ಒಟ್ಟು ಮಾರಾಟ', totalPurchase:'ಒಟ್ಟು ಖರೀದಿ',
+    cashBalance:'ನಗದು ಶಿಲ್ಕು', stockValue:'ಸ್ಟಾಕ್ ಮೌಲ್ಯ',
+    recentSales:'ಇತ್ತೀಚಿನ ಮಾರಾಟ', lowStock:'ಕಡಿಮೆ ಸ್ಟಾಕ್ ಎಚ್ಚರಿಕೆ',
+    noSalesYet:'ಇನ್ನೂ ಮಾರಾಟವಿಲ್ಲ', allStockOk:'✅ ಎಲ್ಲ ಸ್ಟಾಕ್ ಸರಿಯಾಗಿದೆ',
+    addCapital:'ಬಂಡವಾಳ ಸೇರಿಸಿ', ownerDrawings:'ಮಾಲೀಕರ ಹಿಂಪಡೆತ',
+    newSale:'+ ಹೊಸ ಮಾರಾಟ', newPurchase:'+ ಹೊಸ ಖರೀದಿ',
+    saveBtn:'💾 ಬಿಲ್ ಉಳಿಸಿ', loginBtn:'ಲಾಗಿನ್',
+    selectFirm:'ಸಂಸ್ಥೆ ಆಯ್ಕೆ ಮಾಡಿ', password:'ಪಾಸ್‌ವರ್ಡ್',
+    createNewFirm:'+ ಹೊಸ ಸಂಸ್ಥೆ', logout:'ಲಾಗ್‌ಔಟ್',
+    search:'ಹುಡುಕಿ...', addProduct:'+ ಉತ್ಪನ್ನ ಸೇರಿಸಿ',
+    addParty:'+ ಪಕ್ಷ ಸೇರಿಸಿ', generateReport:'ವರದಿ ರಚಿಸಿ',
+    trialBalance:'ಟ್ರಯಲ್ ಬ್ಯಾಲೆನ್ಸ್', stockReport:'ಸ್ಟಾಕ್ ವರದಿ',
+    financialReport:'📈 ಆರ್ಥಿಕ ವರದಿ',
+    partyLedger:'📒 ಪಕ್ಷ ಲೆಡ್ಜರ್', outstanding:'📊 ಬಾಕಿ',
+    cashTransactions:'💵 ನಗದು ವ್ಯವಹಾರ', bankTransactions:'🏦 ಬ್ಯಾಂಕ್ ವ್ಯವಹಾರ',
+    addCashEntry:'+ ನಗದು ಎಂಟ್ರಿ', addBankEntry:'+ ಬ್ಯಾಂಕ್ ಎಂಟ್ರಿ',
+    purchase:'ಖರೀದಿ', jangad:'ಜಾಂಗಡ್', dc:'ಡೆಲಿವರಿ ಚಲನ್',
+    gstModule:'GST ಮಾಡ್ಯೂಲ್', bankRecon:'ಬ್ಯಾಂಕ್ ಸಾಮರಸ್ಯ',
+    returns:'ರಿಟರ್ನ್ಸ್', incomeExpense:'ಆದಾಯ & ವೆಚ್ಚ',
+  },
+  ml: {
+    name:'Malayalam', nativeName:'മലയാളം', flag:'🇮🇳', region:'Kerala',
+    dashboard:'ഡാഷ്‌ബോർഡ്', products:'ഉൽപ്പന്നങ്ങൾ', parties:'കക്ഷികൾ',
+    sales:'വിൽപ്പന', more:'കൂടുതൽ', home:'ഹോം',
+    totalSales:'ആകെ വിൽപ്പന', totalPurchase:'ആകെ വാങ്ങൽ',
+    cashBalance:'ക്യാഷ് ബാലൻസ്', stockValue:'സ്റ്റോക്ക് മൂല്യം',
+    recentSales:'സമീപകാല വിൽപ്പന', lowStock:'കുറഞ്ഞ സ്റ്റോക്ക് മുന്നറിയിപ്പ്',
+    noSalesYet:'ഇനിയും വിൽപ്പനയില്ല', allStockOk:'✅ എല്ലാ സ്റ്റോക്കും ശരിയാണ്',
+    addCapital:'മൂലധനം ചേർക്കുക', ownerDrawings:'ഉടമ പിൻവലിക്കൽ',
+    newSale:'+ പുതിയ വിൽപ്പന', newPurchase:'+ പുതിയ വാങ്ങൽ',
+    saveBtn:'💾 ബിൽ സേവ് ചെയ്യുക', loginBtn:'ലോഗിൻ',
+    selectFirm:'ഫേം തിരഞ്ഞെടുക്കുക', password:'പാസ്‌വേഡ്',
+    createNewFirm:'+ പുതിയ ഫേം', logout:'ലോഗൗട്ട്',
+    search:'തിരയുക...', addProduct:'+ ഉൽപ്പന്നം ചേർക്കുക',
+    addParty:'+ കക്ഷി ചേർക്കുക', generateReport:'റിപ്പോർട്ട് ഉണ്ടാക്കുക',
+    trialBalance:'ട്രയൽ ബാലൻസ്', stockReport:'സ്റ്റോക്ക് റിപ്പോർട്ട്',
+    financialReport:'📈 സാമ്പത്തിക റിപ്പോർട്ട്',
+    partyLedger:'📒 കക്ഷി ലെഡ്ജർ', outstanding:'📊 കുടിശ്ശിക',
+    cashTransactions:'💵 ക്യാഷ് ഇടപാടുകൾ', bankTransactions:'🏦 ബാങ്ക് ഇടപാടുകൾ',
+    addCashEntry:'+ ക്യാഷ് എൻട്രി', addBankEntry:'+ ബാങ്ക് എൻട്രി',
+    purchase:'വാങ്ങൽ', jangad:'ജാംഗഡ്', dc:'ഡെലിവറി ചലാൻ',
+    gstModule:'GST മൊഡ്യൂൾ', bankRecon:'ബാങ്ക് അനുരഞ്ജനം',
+    returns:'റിട്ടേൺ', incomeExpense:'വരുമാനം & ചെലവ്',
+  },
+  pa: {
+    name:'Punjabi', nativeName:'ਪੰਜਾਬੀ', flag:'🇮🇳', region:'Punjab',
+    dashboard:'ਡੈਸ਼ਬੋਰਡ', products:'ਉਤਪਾਦ', parties:'ਪਾਰਟੀਆਂ',
+    sales:'ਵਿਕਰੀ', more:'ਹੋਰ', home:'ਹੋਮ',
+    totalSales:'ਕੁੱਲ ਵਿਕਰੀ', totalPurchase:'ਕੁੱਲ ਖਰੀਦ',
+    cashBalance:'ਨਕਦ ਬਕਾਇਆ', stockValue:'ਸਟਾਕ ਮੁੱਲ',
+    recentSales:'ਹਾਲੀਆ ਵਿਕਰੀ', lowStock:'ਘੱਟ ਸਟਾਕ ਚੇਤਾਵਨੀ',
+    noSalesYet:'ਅਜੇ ਕੋਈ ਵਿਕਰੀ ਨਹੀਂ', allStockOk:'✅ ਸਾਰਾ ਸਟਾਕ ਠੀਕ ਹੈ',
+    addCapital:'ਪੂੰਜੀ ਜੋੜੋ', ownerDrawings:'ਮਾਲਕ ਦੀ ਨਿਕਾਸੀ',
+    newSale:'+ ਨਵੀਂ ਵਿਕਰੀ', newPurchase:'+ ਨਵੀਂ ਖਰੀਦ',
+    saveBtn:'💾 ਬਿੱਲ ਸੇਵ ਕਰੋ', loginBtn:'ਲਾਗਇਨ',
+    selectFirm:'ਫਰਮ ਚੁਣੋ', password:'ਪਾਸਵਰਡ',
+    createNewFirm:'+ ਨਵੀਂ ਫਰਮ ਬਣਾਓ', logout:'ਲਾਗਆਉਟ',
+    search:'ਖੋਜੋ...', addProduct:'+ ਉਤਪਾਦ ਜੋੜੋ',
+    addParty:'+ ਪਾਰਟੀ ਜੋੜੋ', generateReport:'ਰਿਪੋਰਟ ਬਣਾਓ',
+    trialBalance:'ਟ੍ਰਾਇਲ ਬੈਲੇਂਸ', stockReport:'ਸਟਾਕ ਰਿਪੋਰਟ',
+    financialReport:'📈 ਵਿੱਤੀ ਰਿਪੋਰਟ',
+    partyLedger:'📒 ਪਾਰਟੀ ਖਾਤਾ', outstanding:'📊 ਬਕਾਇਆ',
+    cashTransactions:'💵 ਨਕਦ ਲੈਣ-ਦੇਣ', bankTransactions:'🏦 ਬੈਂਕ ਲੈਣ-ਦੇਣ',
+    addCashEntry:'+ ਨਕਦ ਐਂਟਰੀ', addBankEntry:'+ ਬੈਂਕ ਐਂਟਰੀ',
+    purchase:'ਖਰੀਦ', jangad:'ਜਾਂਗੜ', dc:'ਡਿਲੀਵਰੀ ਚਲਾਨ',
+    gstModule:'GST ਮੋਡੀਊਲ', bankRecon:'ਬੈਂਕ ਸੁਲ੍ਹਾ',
+    returns:'ਵਾਪਸੀ', incomeExpense:'ਆਮਦਨ ਅਤੇ ਖਰਚ',
+  },
+  or: {
+    name:'Odia', nativeName:'ଓଡ଼ିଆ', flag:'🇮🇳', region:'Odisha',
+    dashboard:'ଡ୍ୟାଶ୍‌ବୋର୍ଡ', products:'ଉତ୍ପାଦ', parties:'ଦଳ',
+    sales:'ବିକ୍ରୟ', more:'ଅଧିକ', home:'ହୋମ',
+    totalSales:'ମୋଟ ବିକ୍ରୟ', totalPurchase:'ମୋଟ କ୍ରୟ',
+    cashBalance:'ନଗଦ ଶେଷ', stockValue:'ଷ୍ଟକ ମୂଲ୍ୟ',
+    recentSales:'ସାମ୍ପ୍ରତିକ ବିକ୍ରୟ', lowStock:'କମ ଷ୍ଟକ ସତର୍କତା',
+    noSalesYet:'ଏ ପର୍ଯ୍ୟନ୍ତ ବିକ୍ରୟ ନାହିଁ', allStockOk:'✅ ସବୁ ଷ୍ଟକ ଠିକ ଅଛି',
+    addCapital:'ପୁଞ୍ଜି ଯୋଡ଼ନ୍ତୁ', ownerDrawings:'ମାଲିକ ଉଠାଣ',
+    newSale:'+ ନୂତନ ବିକ୍ରୟ', newPurchase:'+ ନୂତନ କ୍ରୟ',
+    saveBtn:'💾 ବିଲ ସେଭ କରନ୍ତୁ', loginBtn:'ଲଗଇନ',
+    selectFirm:'ଫର୍ମ ବାଛନ୍ତୁ', password:'ପାସୱାର୍ଡ',
+    createNewFirm:'+ ନୂତନ ଫର୍ମ', logout:'ଲଗଆଉଟ',
+    search:'ଖୋଜନ୍ତୁ...', addProduct:'+ ଉତ୍ପାଦ ଯୋଡ଼ନ୍ତୁ',
+    addParty:'+ ଦଳ ଯୋଡ଼ନ୍ତୁ', generateReport:'ରିପୋର୍ଟ ତିଆରି',
+    trialBalance:'ଟ୍ରାଏଲ ବ୍ୟାଲାନ୍ସ', stockReport:'ଷ୍ଟକ ରିପୋର୍ଟ',
+    financialReport:'📈 ଆର୍ଥିକ ରିପୋର୍ଟ',
+    partyLedger:'📒 ଦଳ ଲେଜର', outstanding:'📊 ବକେୟା',
+    cashTransactions:'💵 ନଗଦ ଲେଣଦେଣ', bankTransactions:'🏦 ବ୍ୟାଙ୍କ ଲେଣଦେଣ',
+    addCashEntry:'+ ନଗଦ ଏଣ୍ଟ୍ରି', addBankEntry:'+ ବ୍ୟାଙ୍କ ଏଣ୍ଟ୍ରି',
+    purchase:'କ୍ରୟ', jangad:'ଜାଂଗଡ', dc:'ଡେଲିଭାରି ଚଲାଣ',
+    gstModule:'GST ମଡ୍ୟୁଲ', bankRecon:'ବ୍ୟାଙ୍କ ସମାଧାନ',
+    returns:'ଫେରତ', incomeExpense:'ଆୟ ଓ ବ୍ୟୟ',
+  },
+  as: {
+    name:'Assamese', nativeName:'অসমীয়া', flag:'🇮🇳', region:'Assam',
+    dashboard:'ডেশ্বৰ্ড', products:'সামগ্ৰী', parties:'দল',
+    sales:'বিক্ৰী', more:'অধিক', home:'হোম',
+    totalSales:'মুঠ বিক্ৰী', totalPurchase:'মুঠ ক্ৰয়',
+    cashBalance:'নগদ বেলেঞ্চ', stockValue:'ষ্টক মূল্য',
+    recentSales:'শেহতীয়া বিক্ৰী', lowStock:'কম ষ্টক সতৰ্কতা',
+    noSalesYet:'এতিয়ালৈকে বিক্ৰী নাই', allStockOk:'✅ সকলো ষ্টক ঠিক আছে',
+    addCapital:'মূলধন যোগ কৰক', ownerDrawings:'মালিকৰ উঠাই লোৱা',
+    newSale:'+ নতুন বিক্ৰী', newPurchase:'+ নতুন ক্ৰয়',
+    saveBtn:'💾 বিল সংৰক্ষণ', loginBtn:'লগইন',
+    selectFirm:'ফার্ম বাছনি কৰক', password:'পাছৱৰ্ড',
+    createNewFirm:'+ নতুন ফার্ম', logout:'লগআউট',
+    search:'বিচাৰক...', addProduct:'+ সামগ্ৰী যোগ',
+    addParty:'+ দল যোগ', generateReport:'প্ৰতিবেদন তৈয়াৰ',
+    trialBalance:'ট্ৰায়েল বেলেঞ্চ', stockReport:'ষ্টক প্ৰতিবেদন',
+    financialReport:'📈 আৰ্থিক প্ৰতিবেদন',
+    partyLedger:'📒 দলৰ খতিয়ান', outstanding:'📊 বাকী',
+    cashTransactions:'💵 নগদ লেনদেন', bankTransactions:'🏦 বেংক লেনদেন',
+    addCashEntry:'+ নগদ এন্ট্ৰি', addBankEntry:'+ বেংক এন্ট্ৰি',
+    purchase:'ক্ৰয়', jangad:'জাংগড', dc:'ডেলিভাৰি চালান',
+    gstModule:'GST মডিউল', bankRecon:'বেংক পুনৰমিলন',
+    returns:'উভতাই দিয়া', incomeExpense:'আয় আৰু ব্যয়',
+  },
+  ur: {
+    name:'Urdu', nativeName:'اردو', flag:'🇮🇳', region:'UP / J&K',
+    dashboard:'ڈیش بورڈ', products:'مصنوعات', parties:'فریقین',
+    sales:'فروخت', more:'مزید', home:'ہوم',
+    totalSales:'کل فروخت', totalPurchase:'کل خریداری',
+    cashBalance:'نقد بیلنس', stockValue:'اسٹاک قیمت',
+    recentSales:'حالیہ فروخت', lowStock:'کم اسٹاک انتباہ',
+    noSalesYet:'ابھی کوئی فروخت نہیں', allStockOk:'✅ تمام اسٹاک ٹھیک ہے',
+    addCapital:'سرمایہ شامل کریں', ownerDrawings:'مالک کی نکاسی',
+    newSale:'+ نئی فروخت', newPurchase:'+ نئی خریداری',
+    saveBtn:'💾 بل محفوظ کریں', loginBtn:'لاگ ان',
+    selectFirm:'فرم منتخب کریں', password:'پاس ورڈ',
+    createNewFirm:'+ نئی فرم بنائیں', logout:'لاگ آؤٹ',
+    search:'تلاش کریں...', addProduct:'+ مصنوع شامل کریں',
+    addParty:'+ فریق شامل کریں', generateReport:'رپورٹ بنائیں',
+    trialBalance:'ٹرائل بیلنس', stockReport:'اسٹاک رپورٹ',
+    financialReport:'📈 مالیاتی رپورٹ',
+    partyLedger:'📒 فریق بہی کھاتہ', outstanding:'📊 واجبات',
+    cashTransactions:'💵 نقد لین دین', bankTransactions:'🏦 بینک لین دین',
+    addCashEntry:'+ نقد اندراج', addBankEntry:'+ بینک اندراج',
+    purchase:'خریداری', jangad:'جانگڑ', dc:'ڈیلیوری چالان',
+    gstModule:'GST ماڈیول', bankRecon:'بینک مصالحت',
+    returns:'واپسی', incomeExpense:'آمدنی اور اخراجات',
+  },
+  sa: {
+    name:'Sanskrit', nativeName:'संस्कृतम्', flag:'🇮🇳', region:'Classical',
+    dashboard:'सूचनाफलकम्', products:'उत्पादानि', parties:'पक्षाः',
+    sales:'विक्रयः', more:'अधिकम्', home:'गृहम्',
+    totalSales:'कुल विक्रयः', totalPurchase:'कुल क्रयः',
+    cashBalance:'नगद शेषम्', stockValue:'भण्डार मूल्यम्',
+    recentSales:'अद्यतन विक्रयः', lowStock:'अल्प भण्डार सूचना',
+    noSalesYet:'अद्यापि विक्रयः नास्ति', allStockOk:'✅ सर्वं भण्डारं शोभनम्',
+    addCapital:'पूञ्जी योजयतु', ownerDrawings:'स्वामिनः निकासः',
+    newSale:'+ नूतन विक्रयः', newPurchase:'+ नूतन क्रयः',
+    saveBtn:'💾 बिलं रक्षतु', loginBtn:'प्रवेशः',
+    selectFirm:'संस्थां चिनोतु', password:'गुप्तशब्दः',
+    createNewFirm:'+ नूतन संस्था', logout:'निर्गमनम्',
+    search:'अन्वेषतु...', addProduct:'+ उत्पाद योजयतु',
+    addParty:'+ पक्षं योजयतु', generateReport:'प्रतिवेदनम् रचयतु',
+    trialBalance:'परीक्षा शेषम्', stockReport:'भण्डार प्रतिवेदनम्',
+    financialReport:'📈 आर्थिक प्रतिवेदनम्',
+    partyLedger:'📒 पक्ष खातम्', outstanding:'📊 शेषम्',
+    cashTransactions:'💵 नगद व्यवहारः', bankTransactions:'🏦 बैंक व्यवहारः',
+    addCashEntry:'+ नगद प्रविष्टिः', addBankEntry:'+ बैंक प्रविष्टिः',
+    purchase:'क्रयः', jangad:'जाङ्गड', dc:'वितरण चालनम्',
+    gstModule:'GST मॉड्यूल', bankRecon:'बैंक समाधानम्',
+    returns:'प्रत्यागमनम्', incomeExpense:'आयः व्ययश्च',
+  },
+  ne: {
+    name:'Nepali', nativeName:'नेपाली', flag:'🇮🇳', region:'Sikkim / Darjeeling',
+    dashboard:'ड्यासबोर्ड', products:'उत्पादनहरू', parties:'दलहरू',
+    sales:'बिक्री', more:'थप', home:'होम',
+    totalSales:'कुल बिक्री', totalPurchase:'कुल खरिद',
+    cashBalance:'नगद मौज्दात', stockValue:'स्टक मूल्य',
+    recentSales:'हालको बिक्री', lowStock:'कम स्टक चेतावनी',
+    noSalesYet:'अझै बिक्री छैन', allStockOk:'✅ सबै स्टक ठीक छ',
+    addCapital:'पुँजी थप्नुस्', ownerDrawings:'मालिकको झिकाइ',
+    newSale:'+ नयाँ बिक्री', newPurchase:'+ नयाँ खरिद',
+    saveBtn:'💾 बिल सेभ गर्नुस्', loginBtn:'लगइन',
+    selectFirm:'फर्म छान्नुस्', password:'पासवर्ड',
+    createNewFirm:'+ नयाँ फर्म', logout:'लगआउट',
+    search:'खोज्नुस्...', addProduct:'+ उत्पादन थप्नुस्',
+    addParty:'+ दल थप्नुस्', generateReport:'रिपोर्ट बनाउनुस्',
+    trialBalance:'ट्रायल ब्यालेन्स', stockReport:'स्टक रिपोर्ट',
+    financialReport:'📈 वित्तीय रिपोर्ट',
+    partyLedger:'📒 दल खाता', outstanding:'📊 बाँकी',
+    cashTransactions:'💵 नगद कारोबार', bankTransactions:'🏦 बैंक कारोबार',
+    addCashEntry:'+ नगद एन्ट्री', addBankEntry:'+ बैंक एन्ट्री',
+    purchase:'खरिद', jangad:'जाङगड', dc:'डेलिभरी चलान',
+    gstModule:'GST मोड्युल', bankRecon:'बैंक मेलमिलाप',
+    returns:'फिर्ता', incomeExpense:'आय र खर्च',
+  },
+  mai: {
+    name:'Maithili', nativeName:'मैथिली', flag:'🇮🇳', region:'Bihar',
+    dashboard:'डैशबोर्ड', products:'उत्पाद', parties:'पार्टी',
+    sales:'बिक्री', more:'आरो', home:'होम',
+    totalSales:'कुल बिक्री', totalPurchase:'कुल खरीद',
+    cashBalance:'नकद बैलेंस', stockValue:'स्टॉक मूल्य',
+    recentSales:'हालिया बिक्री', lowStock:'कम स्टॉक चेतावनी',
+    noSalesYet:'अखन धरि बिक्री नहि', allStockOk:'✅ सभ स्टॉक ठीक अछि',
+    addCapital:'पूंजी जोड़ू', ownerDrawings:'मालिकक निकासी',
+    newSale:'+ नव बिक्री', newPurchase:'+ नव खरीद',
+    saveBtn:'💾 बिल सेव करू', loginBtn:'लॉगिन',
+    selectFirm:'फर्म चुनू', password:'पासवर्ड',
+    createNewFirm:'+ नव फर्म बनाऊ', logout:'लॉगआउट',
+    search:'खोजू...', addProduct:'+ उत्पाद जोड़ू',
+    addParty:'+ पार्टी जोड़ू', generateReport:'रिपोर्ट बनाऊ',
+    trialBalance:'ट्रायल बैलेंस', stockReport:'स्टॉक रिपोर्ट',
+    financialReport:'📈 वित्तीय रिपोर्ट',
+    partyLedger:'📒 पार्टी खाता', outstanding:'📊 बकाया',
+    cashTransactions:'💵 नकद लेनदेन', bankTransactions:'🏦 बैंक लेनदेन',
+    addCashEntry:'+ नकद एंट्री', addBankEntry:'+ बैंक एंट्री',
+    purchase:'खरीद', jangad:'जांगड़', dc:'डिलीवरी चालान',
+    gstModule:'GST मॉड्यूल', bankRecon:'बैंक समाधान',
+    returns:'वापसी', incomeExpense:'आय आ खर्च',
+  },
+  kok: {
+    name:'Konkani', nativeName:'कोंकणी', flag:'🇮🇳', region:'Goa',
+    dashboard:'डॅशबोर्ड', products:'उत्पादां', parties:'पक्ष',
+    sales:'विक्री', more:'आनीक', home:'घर',
+    totalSales:'एकूण विक्री', totalPurchase:'एकूण खरेदी',
+    cashBalance:'रोखडे शिल्लक', stockValue:'माल किंमत',
+    recentSales:'अलीकडली विक्री', lowStock:'उणो माल इशारो',
+    noSalesYet:'अजून विक्री ना', allStockOk:'✅ सगळो माल बरो आसा',
+    addCapital:'भांडवल घाल', ownerDrawings:'मालकाचे काडप',
+    newSale:'+ नवी विक्री', newPurchase:'+ नवी खरेदी',
+    saveBtn:'💾 बिल सेव्ह करा', loginBtn:'लॉगिन',
+    selectFirm:'फर्म निवड', password:'पासवर्ड',
+    createNewFirm:'+ नवी फर्म', logout:'लॉगआउट',
+    search:'सोद...', addProduct:'+ उत्पाद घाल',
+    addParty:'+ पक्ष घाल', generateReport:'रिपोर्ट तयार कर',
+    trialBalance:'ट्रायल बॅलन्स', stockReport:'माल रिपोर्ट',
+    financialReport:'📈 आर्थिक रिपोर्ट',
+    partyLedger:'📒 पक्ष वही', outstanding:'📊 बाकी',
+    cashTransactions:'💵 रोखडे व्यवहार', bankTransactions:'🏦 बँक व्यवहार',
+    addCashEntry:'+ रोखडे एंट्री', addBankEntry:'+ बँक एंट्री',
+    purchase:'खरेदी', jangad:'जांगड', dc:'डिलिव्हरी चलन',
+    gstModule:'GST मॉड्यूल', bankRecon:'बँक जुळवणी',
+    returns:'परत', incomeExpense:'उत्पन्न आणि खर्च',
+  },
+  mni: {
+    name:'Manipuri', nativeName:'মণিপুরী', flag:'🇮🇳', region:'Manipur',
+    dashboard:'ডেশবোর্ড', products:'পণ্য', parties:'দল',
+    sales:'বিক্রয়', more:'আরো', home:'হোম',
+    totalSales:'মোট বিক্রয়', totalPurchase:'মোট ক্রয়',
+    cashBalance:'নগদ ব্যালেন্স', stockValue:'স্টক মূল্য',
+    recentSales:'সাম্প্রতিক বিক্রয়', lowStock:'কম স্টক সতর্কতা',
+    noSalesYet:'এখনো বিক্রয় নেই', allStockOk:'✅ সব স্টক ঠিক আছে',
+    addCapital:'মূলধন যোগ', ownerDrawings:'মালিকের উত্তোলন',
+    newSale:'+ নতুন বিক্রয়', newPurchase:'+ নতুন ক্রয়',
+    saveBtn:'💾 বিল সেভ', loginBtn:'লগইন',
+    selectFirm:'ফার্ম বাছুন', password:'পাসওয়ার্ড',
+    createNewFirm:'+ নতুন ফার্ম', logout:'লগআউট',
+    search:'খুঁজুন...', addProduct:'+ পণ্য যোগ',
+    addParty:'+ দল যোগ', generateReport:'রিপোর্ট তৈরি',
+    trialBalance:'ট্রায়াল ব্যালেন্স', stockReport:'স্টক রিপোর্ট',
+    financialReport:'📈 আর্থিক রিপোর্ট',
+    partyLedger:'📒 দল লেজার', outstanding:'📊 বকেয়া',
+    cashTransactions:'💵 নগদ লেনদেন', bankTransactions:'🏦 ব্যাংক লেনদেন',
+    addCashEntry:'+ নগদ এন্ট্রি', addBankEntry:'+ ব্যাংক এন্ট্রি',
+    purchase:'ক্রয়', jangad:'জাংগড', dc:'ডেলিভারি চালান',
+    gstModule:'GST মডিউল', bankRecon:'ব্যাংক সমন্বয়',
+    returns:'ফেরত', incomeExpense:'আয় ও ব্যয়',
+  },
+  sd: {
+    name:'Sindhi', nativeName:'سنڌي', flag:'🇮🇳', region:'Sindh',
+    dashboard:'ڊيش بورڊ', products:'شين', parties:'ڌريون',
+    sales:'وڪري', more:'وڌيڪ', home:'گهر',
+    totalSales:'ڪل وڪري', totalPurchase:'ڪل خريداري',
+    cashBalance:'نقد بيلنس', stockValue:'اسٽاڪ قيمت',
+    recentSales:'تازي وڪري', lowStock:'گهٽ اسٽاڪ خبردار',
+    noSalesYet:'اڃا وڪري ناهي', allStockOk:'✅ سڀ اسٽاڪ ٺيڪ آهي',
+    addCapital:'سرمايو شامل ڪريو', ownerDrawings:'مالڪ جي ڪڍڻ',
+    newSale:'+ نئين وڪري', newPurchase:'+ نئين خريداري',
+    saveBtn:'💾 بل محفوظ ڪريو', loginBtn:'لاگ ان',
+    selectFirm:'فرم چونڊيو', password:'پاس ورڊ',
+    createNewFirm:'+ نئين فرم', logout:'لاگ آئوٽ',
+    search:'ڳوليو...', addProduct:'+ شيء شامل ڪريو',
+    addParty:'+ ڌر شامل ڪريو', generateReport:'رپورٽ ٺاهيو',
+    trialBalance:'ٽرائل بيلنس', stockReport:'اسٽاڪ رپورٽ',
+    financialReport:'📈 مالياتي رپورٽ',
+    partyLedger:'📒 ڌر کاتو', outstanding:'📊 باقي',
+    cashTransactions:'💵 نقد ڏيڻ وٺڻ', bankTransactions:'🏦 بئنڪ ڏيڻ وٺڻ',
+    addCashEntry:'+ نقد داخلا', addBankEntry:'+ بئنڪ داخلا',
+    purchase:'خريداري', jangad:'جانگڙ', dc:'ڊليوري چالان',
+    gstModule:'GST ماڊيول', bankRecon:'بئنڪ ميلاپ',
+    returns:'واپسي', incomeExpense:'آمدني ۽ خرچ',
+  },
+  doi: {
+    name:'Dogri', nativeName:'डोगरी', flag:'🇮🇳', region:'Jammu',
+    dashboard:'डैशबोर्ड', products:'उत्पाद', parties:'पार्टियां',
+    sales:'विक्री', more:'होर', home:'होम',
+    totalSales:'कुल विक्री', totalPurchase:'कुल खरीद',
+    cashBalance:'नकद बैलेंस', stockValue:'स्टॉक कीमत',
+    recentSales:'हालिया विक्री', lowStock:'घट्ट स्टॉक चेतावनी',
+    noSalesYet:'अज्जे तांईं कोई विक्री नेई', allStockOk:'✅ सारा स्टॉक ठीक ऐ',
+    addCapital:'पूंजी पाओ', ownerDrawings:'मालक दी निकासी',
+    newSale:'+ नई विक्री', newPurchase:'+ नई खरीद',
+    saveBtn:'💾 बिल सेव करो', loginBtn:'लॉगिन',
+    selectFirm:'फर्म चुनो', password:'पासवर्ड',
+    createNewFirm:'+ नई फर्म बनाओ', logout:'लॉगआउट',
+    search:'खोजो...', addProduct:'+ उत्पाद जोड़ो',
+    addParty:'+ पार्टी जोड़ो', generateReport:'रिपोर्ट बनाओ',
+    trialBalance:'ट्रायल बैलेंस', stockReport:'स्टॉक रिपोर्ट',
+    financialReport:'📈 आर्थिक रिपोर्ट',
+    partyLedger:'📒 पार्टी खाता', outstanding:'📊 बकाया',
+    cashTransactions:'💵 नकद लेनदेन', bankTransactions:'🏦 बैंक लेनदेन',
+    addCashEntry:'+ नकद एंट्री', addBankEntry:'+ बैंक एंट्री',
+    purchase:'खरीद', jangad:'जांगड़', dc:'डिलीवरी चालान',
+    gstModule:'GST मॉड्यूल', bankRecon:'बैंक समाधान',
+    returns:'वापसी', incomeExpense:'आय ते खर्च',
+  },
+};
+
+let CURRENT_LANG = 'en';
+
+function getLang(){
+  return localStorage.getItem('MOJ_LANG') || 'en';
+}
+function setLang(code){
+  localStorage.setItem('MOJ_LANG', code);
+  CURRENT_LANG = code;
+  applyLanguage();
+  const tr = TRANSLATIONS[code] || TRANSLATIONS.en;
+  mdToast('✅ ' + tr.nativeName + ' — ' + tr.name);
+}
+function t(key){
+  const lang = getLang();
+  const tr = TRANSLATIONS[lang] || TRANSLATIONS.en;
+  return tr[key] || TRANSLATIONS.en[key] || key;
+}
+
+function applyLanguage(){
+  const lang = getLang();
+  const tr = TRANSLATIONS[lang] || TRANSLATIONS.en;
+
+  // ── Bottom nav labels ──
+  const navMap = {'nav_dashboard':'home','nav_products':'products',
+    'nav_parties':'parties','nav_sales':'sales','nav_more':'more'};
+  Object.entries(navMap).forEach(([id,key]) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const nodes = [...el.childNodes].filter(n=>n.nodeType===3&&n.textContent.trim());
+    if(nodes.length) nodes[nodes.length-1].textContent = ' '+(tr[key]||key)+' ';
+  });
+
+  // ── Dashboard summary card labels ──
+  const lblMap = {
+    'ds_sale':'totalSales','ds_pur':'totalPurchase',
+    'ds_cash':'cashBalance','ds_stock':'stockValue',
+    'cb_cash':'cashBalance','cb_bank':'bankBalance'
+  };
+  Object.entries(lblMap).forEach(([id,key]) => {
+    const el = document.getElementById(id);
+    if(el && el.nextElementSibling && el.nextElementSibling.classList.contains('lbl'))
+      el.nextElementSibling.textContent = tr[key]||TRANSLATIONS.en[key]||'';
+  });
+
+  // ── Card headings ──
+  const h3Map = {
+    'ds_recentSales':    'recentSales',
+    'ds_lowStock':       'lowStock',
+  };
+  Object.entries(h3Map).forEach(([id,key]) => {
+    const el = document.getElementById(id);
+    if(el && el.previousElementSibling && el.previousElementSibling.tagName==='H3')
+      el.previousElementSibling.textContent = tr[key]||TRANSLATIONS.en[key]||'';
+  });
+
+  // ── Buttons ──
+  const btnMap = [
+    ['button[onclick="logout()"]', 'logout'],
+    ['button[onclick="doLogin()"]', 'loginBtn'],
+    ['button[onclick="openSaleModal()"]', 'newSale'],
+    ['button[onclick="openPurModal()"]', 'newPurchase'],
+  ];
+  btnMap.forEach(([sel,key]) => {
+    const el = document.querySelector(sel);
+    if(el) el.textContent = tr[key]||TRANSLATIONS.en[key]||el.textContent;
+  });
+
+  // ── Search boxes placeholder ──
+  document.querySelectorAll('.search-box').forEach(el => {
+    el.placeholder = '🔍 '+(tr.search||'Search...');
+  });
+
+  // ── Login page labels ──
+  const loginUser = document.querySelector('label[for="loginUser"], #loginPage label');
+  if(loginUser) loginUser.textContent = tr.selectFirm||'Select Firm';
+  const loginPass = document.querySelector('#loginPage .form-group:nth-child(2) label');
+  if(loginPass) loginPass.textContent = tr.password||'Password';
+  const createFirmBtn = document.querySelector('button[onclick="showRegisterForm()"]');
+  if(createFirmBtn) createFirmBtn.textContent = tr.createNewFirm||'+ Create New Firm';
+
+  // ── Section titles that can be translated ──
+  // Add/Products button
+  document.querySelectorAll('.btn-green.btn-full').forEach(btn => {
+    if(btn.textContent.includes('Add Product') || btn.textContent.includes('ઉત્પાદન') || btn.textContent.includes('उत्पाद'))
+      btn.textContent = tr.addProduct||'+ Add Product';
+    if(btn.textContent.includes('Add Party') || btn.textContent.includes('पार्टी') || btn.textContent.includes('પાર્ટી'))
+      btn.textContent = tr.addParty||'+ Add Party';
+    if(btn.textContent.includes('New Sale') || btn.textContent.includes('नई बिक्री') || btn.textContent.includes('નવું'))
+      btn.textContent = tr.newSale||'+ New Sale';
+    if(btn.textContent.includes('New Purchase') || btn.textContent.includes('नई खरीद') || btn.textContent.includes('નવી ખ'))
+      btn.textContent = tr.newPurchase||'+ New Purchase';
+    if(btn.textContent.includes('Generate Report') || btn.textContent.includes('रिपोर्ट') || btn.textContent.includes('રિપોર્ટ'))
+      btn.textContent = tr.generateReport||'Generate Report';
+  });
+
+  // ── More page section buttons ──
+  const moreMap = [
+    ["showPage('purchase')", 'purchase'],
+    ["showPage('cashbank')", 'cashBalance'],
+    ["showPage('ledger')", 'partyLedger'],
+    ["showPage('reports')", 'financialReport'],
+    ["showPage('jangad')", 'jangad'],
+    ["showPage('dc')", 'dc'],
+    ["showPage('gst')", 'gstModule'],
+    ["showPage('bankrecon')", 'bankRecon'],
+    ["showPage('returns')", 'returns'],
+    ["showPage('incexp')", 'incomeExpense'],
+  ];
+  moreMap.forEach(([onclick,key]) => {
+    const btn = document.querySelector('button[onclick*="' + onclick + '"]');
+    if(btn && tr[key]) btn.textContent = (btn.textContent.match(/^[^a-zA-Zऀ-৿઀-૿]*/)||[''])[0] + (tr[key]||'');
+  });
+
+  // ── Card section h3 titles via text matching ──
+  document.querySelectorAll('.card h3').forEach(h => {
+    const txt = h.textContent.trim();
+    if(txt.includes('Recent Sales') || txt.includes('हालिया') || txt.includes('તાજેતર'))
+      h.textContent = tr.recentSales||'Recent Sales';
+    if(txt.includes('Low Stock') || txt.includes('कम स्टॉक') || txt.includes('ઓછો સ્ટૉ'))
+      h.textContent = tr.lowStock||'Low Stock Alert';
+    if(txt.includes('Cash Transactions') || txt.includes('नकद') || txt.includes('રોકડ'))
+      h.textContent = tr.cashTransactions||'💵 Cash Transactions';
+    if(txt.includes('Bank Transactions') || txt.includes('बैंक लेनदेन') || txt.includes('બૅન્ક વ'))
+      h.textContent = tr.bankTransactions||'🏦 Bank Transactions';
+    if(txt.includes('Financial Report'))
+      h.textContent = tr.financialReport||'📈 Financial Report';
+    if(txt.includes('Party Ledger'))
+      h.textContent = tr.partyLedger||'📒 Party Ledger';
+    if(txt.includes('Outstanding'))
+      h.textContent = tr.outstanding||'📊 Outstanding';
+  });
+
+  // ── Add Cash / Bank Entry buttons ──
+  document.querySelectorAll('button').forEach(btn => {
+    if(btn.textContent.includes('Add Cash Entry')||btn.textContent.includes('नकद एंट्री')||btn.textContent.includes('રોકડ એ'))
+      btn.textContent = tr.addCashEntry||'+ Add Cash Entry';
+    if(btn.textContent.includes('Add Bank Entry')||btn.textContent.includes('बैंक एंट्री')||btn.textContent.includes('બૅન્ક એ'))
+      btn.textContent = tr.addBankEntry||'+ Add Bank Entry';
+  });
+
+  // ── Save Bill button ──
+  const saveBtn = document.querySelector('button[onclick="saveSale()"]');
+  if(saveBtn) saveBtn.textContent = tr.saveBtn||'💾 Save Bill';
+
+  // ── No sales / stock ok messages ──
+  document.querySelectorAll('#ds_recentSales p, #ds_lowStock p').forEach(p => {
+    if(p.textContent.includes('No sales') || p.textContent.includes('अभी कोई') || p.textContent.includes('હજી'))
+      p.textContent = tr.noSalesYet||'No sales yet';
+    if(p.textContent.includes('All stock') || p.textContent.includes('सभी') || p.textContent.includes('બધો'))
+      p.textContent = tr.allStockOk||'✅ All stock levels OK';
+  });
+
+  // ── Page title & topbar ──
+  document.title = 'MOJ — '+(lang==='hi'?'अकाउंटिंग सिस्टम':lang==='gu'?'એકાઉન્ટિંગ સિસ્ટમ':'Accounting System');
+  document.documentElement.lang = lang==='gu'?'gu':lang==='hi'?'hi':'en';
+
+  // ── Update language buttons to show active ──
+  ['en','hi','gu'].forEach(code => {
+    const btn = document.querySelector(`button[onclick="setLang('${code}')"]`);
+    if(btn){
+      btn.style.background = code===lang ? 'var(--md-primary)' : 'var(--md-surface)';
+      btn.style.color = code===lang ? '#fff' : 'var(--md-on-surface)';
+      btn.style.borderColor = code===lang ? 'var(--md-primary)' : 'var(--md-outline)';
+    }
+  });
+}
+
+// Language selector widget — injected into topbar
+function renderLangSelector(){
+  let sel = document.getElementById('langSelector');
+  if(!sel){
+    const topbar = document.querySelector('.topbar > div:last-child');
+    if(!topbar) return;
+    sel = document.createElement('select');
+    sel.id = 'langSelector';
+    sel.style.cssText = 'background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:5px 6px;border-radius:8px;font-size:11px;font-weight:600;font-family:var(--font-ui);cursor:pointer;outline:none;margin-right:4px';
+    sel.innerHTML = Object.entries(TRANSLATIONS).map(([code, tr]) =>
+      `<option value="${code}" ${code===getLang()?'selected':''}>${tr.nativeName}</option>`
+    ).join('');
+    sel.onchange = function(){ setLang(this.value); };
+    topbar.insertBefore(sel, topbar.firstChild);
+  }
+}
+
+
+// ═══════════════════════════════════════
+//  BLESSING / FAITH LINE ON BILLS
+// ═══════════════════════════════════════
+function getMyBlessingLeft(){
+  const f = getFirmProfile();
+  return f.blessingLeft || '|| JAY AMBE ||';
+}
+function getMyBlessingCenter(){
+  const f = getFirmProfile();
+  return f.blessingCenter || '|| SHREE SHANKHESHWAR PARSHWANATHAY NAMAH ||';
+}
+
+
+// ── INIT: Fill category on product modal open ──
+const _origOpenAddProduct = document.addEventListener;
+document.addEventListener('DOMContentLoaded', function(){
+  // Init language
+  CURRENT_LANG = getLang();
+  renderLangSelector();
+  applyLanguage();
+
+  // When product modal opens, fill categories
+  const addProdBtn = document.querySelector('button[onclick="openModal(\'addProductModal\')"]');
+  if(addProdBtn){
+    const orig = addProdBtn.getAttribute('onclick');
+    addProdBtn.setAttribute('onclick', orig.replace('openModal', '_openProductModal'));
+  }
+
+  // Language selector in More page
+  const morePage = document.getElementById('pg_more');
+  if(morePage){
+    const mc = morePage.querySelector('.card');
+    if(mc){
+      const langDiv = document.createElement('div');
+      langDiv.style.cssText='border-top:1px solid var(--md-outline);margin-top:8px;padding-top:10px';
+      langDiv.innerHTML=`
+        <p style="font-size:11px;font-weight:700;color:var(--md-on-surface-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">🌐 Language / ভাষা / भाषा / భాష</p>
+        <button onclick="openLangModal()" style="width:100%;padding:13px 16px;border:1.5px solid var(--md-outline);border-radius:var(--md-radius-lg);background:var(--md-surface);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font-ui);display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span>🌐 Select / Change Language</span>
+          <span style="font-size:12px;color:var(--md-on-surface-muted)">22 Indian Languages ›</span>
+        </button>
+      `;
+      mc.insertBefore(langDiv, mc.firstChild);
+    }
+  }
+});
+
+function _openProductModal(){
+  fillCategorySelect('p_cat');
+  openModal('addProductModal');
+  // Also re-fill after modal animates in (catches edge case)
+  setTimeout(()=>fillCategorySelect('p_cat'), 50);
+}
+
+// Override showPage to re-fill category when products page opens
+const __origShowPage = typeof showPage === 'function' ? showPage : null;
+if(__origShowPage){
+  window.showPage = function(name){
+    __origShowPage(name);
+    if(name === 'products') fillCategorySelect('p_cat');
+  };
+}
+</script>
+
+<!-- ════ FIX: CUSTOM BIZ TYPE + MANAGE FIRMS + FULL LANG ════ -->
+<script>
+
+// ── Custom business type toggle ──
+function toggleCustomBizReg(){
+  const sel = document.getElementById('reg_biz_type');
+  const div = document.getElementById('reg_custom_biz_div');
+  if(sel && div) div.style.display = sel.value === 'custom' ? 'block' : 'none';
+}
+function toggleCustomBizEdit(){
+  const sel = document.getElementById('edit_biz_type');
+  const div = document.getElementById('edit_custom_biz_div');
+  if(sel && div) div.style.display = sel.value === 'custom' ? 'block' : 'none';
+}
+
+// ── Add Firm from Manage Firms modal ──
+// Properly handles adding when user is already logged in (main app visible)
+function addFirmFromManage(){
+  // Close manage modal
+  const mgModal = document.getElementById('manageFirmsModal');
+  if(mgModal) mgModal.classList.remove('open');
+
+  // If main app is visible, we show a floating register modal
+  const mainApp = document.getElementById('mainApp');
+  const loginPage = document.getElementById('loginPage');
+  const isLoggedIn = mainApp && mainApp.style.display !== 'none';
+
+  if(isLoggedIn){
+    // Show inline register modal on top of main app
+    _showInlineRegisterModal();
+  } else {
+    showRegisterForm();
+  }
+}
+
+function _showInlineRegisterModal(){
+  // Create/show a full-screen register overlay
+  let overlay = document.getElementById('inlineRegModal');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'inlineRegModal';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(26,31,46,.95);z-index:500;overflow-y:auto;padding:16px;display:flex;align-items:flex-start;justify-content:center';
+    overlay.innerHTML = `
+      <div style="background:#fff;border-radius:24px;padding:24px 20px;width:100%;max-width:480px;margin:auto">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+          <button onclick="document.getElementById('inlineRegModal').style.display='none'"
+            style="background:#f5f6fa;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer">←</button>
+          <span style="font-weight:700;font-size:16px">Create New Firm</span>
+        </div>
+        <div style="background:#fff3e0;border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#92600a">
+          📋 Fill your business details — they appear on every bill automatically!
+        </div>
+        <div class="form-group">
+          <label>🏢 Firm / Business Name *</label>
+          <input type="text" id="ireg_firm" placeholder="e.g. Parshwa Fabrics">
+        </div>
+        <div class="form-group">
+          <label>👤 Owner Name</label>
+          <input type="text" id="ireg_owner" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label>📍 Shop Address</label>
+          <textarea id="ireg_address" rows="2" placeholder="Full shop address" style="width:100%;padding:10px 12px;border:1.5px solid #e0e4ed;border-radius:12px;font-size:13px;resize:none"></textarea>
+        </div>
+        <div style="display:flex;gap:8px">
+          <div class="form-group" style="flex:1;margin-bottom:10px">
+            <label>📞 Phone 1</label>
+            <input type="tel" id="ireg_phone" placeholder="Mobile number">
+          </div>
+          <div class="form-group" style="flex:1;margin-bottom:10px">
+            <label>📞 Phone 2</label>
+            <input type="tel" id="ireg_phone2" placeholder="Optional">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>🏭 Business Type *</label>
+          <select id="ireg_biz_type" onchange="toggleCustomBizInline()" style="width:100%;padding:10px 12px;border:1.5px solid #e0e4ed;border-radius:12px;font-size:14px">
+            <option value="">— Select Business Type —</option>
+            <option value="textile">🧵 Textile / Garments / Saree</option>
+            <option value="grocery">🛒 Grocery / Kirana / Food</option>
+            <option value="electronics">📱 Electronics / Mobile</option>
+            <option value="hardware">🔧 Hardware / Building Material</option>
+            <option value="medical">💊 Medical / Pharmacy</option>
+            <option value="stationery">📚 Stationery / Books</option>
+            <option value="furniture">🪑 Furniture / Home Decor</option>
+            <option value="auto">🚗 Auto Parts / Vehicle</option>
+            <option value="jewellery">💍 Jewellery / Gold / Silver</option>
+            <option value="restaurant">🍽️ Restaurant / Food / Bakery</option>
+            <option value="services">💼 Services / Consulting / IT</option>
+            <option value="agriculture">🌾 Agriculture / Seeds</option>
+            <option value="footwear">👟 Footwear / Shoes</option>
+            <option value="general">🏪 General / Other</option>
+            <option value="custom">✏️ My Business Not in List</option>
+          </select>
+          <div id="ireg_custom_div" style="display:none;margin-top:6px">
+            <input type="text" id="ireg_custom_biz" placeholder="Type your business type" style="width:100%;padding:10px 12px;border:1.5px solid #e0e4ed;border-radius:12px;font-size:13px">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>💼 Business Tagline</label>
+          <input type="text" id="ireg_tagline" placeholder="e.g. Wholesalers of All Kinds">
+        </div>
+        <div style="background:#f5f6fa;border-radius:12px;padding:10px 12px;margin-bottom:10px">
+          <p style="font-size:11px;font-weight:700;color:#8896a7;margin-bottom:8px">🙏 Bill Blessing Lines (Optional)</p>
+          <input type="text" id="ireg_blessing_left" placeholder="|| JAY AMBE || or your faith" style="width:100%;padding:9px 12px;border:1.5px solid #e0e4ed;border-radius:10px;font-size:13px;margin-bottom:6px">
+          <input type="text" id="ireg_blessing_center" placeholder="Center blessing or leave empty" style="width:100%;padding:9px 12px;border:1.5px solid #e0e4ed;border-radius:10px;font-size:13px">
+        </div>
+        <div class="form-group">
+          <label>🔒 Set Password *</label>
+          <input type="password" id="ireg_pass" placeholder="Min 4 characters">
+        </div>
+        <div class="form-group">
+          <label>🔒 Confirm Password *</label>
+          <input type="password" id="ireg_pass2" placeholder="Repeat password">
+        </div>
+        <div id="iregErr" style="background:#fdecea;color:#c0392b;padding:10px 14px;border-radius:8px;margin-bottom:10px;font-size:13px;display:none"></div>
+        <button class="btn btn-green btn-full" onclick="saveInlineFirm()">🏢 Create Firm</button>
+        <p style="text-align:center;font-size:11px;color:#8896a7;margin-top:8px">Max 10 firms per device</p>
+      </div>`;
+    document.body.appendChild(overlay);
+  } else {
+    overlay.style.display = 'flex';
+  }
+  // Reset form
+  ['ireg_firm','ireg_owner','ireg_address','ireg_phone','ireg_phone2','ireg_tagline',
+   'ireg_blessing_left','ireg_blessing_center','ireg_pass','ireg_pass2'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('iregErr').style.display='none';
+  if(document.getElementById('ireg_biz_type')) document.getElementById('ireg_biz_type').value='';
+}
+
+function toggleCustomBizInline(){
+  const sel=document.getElementById('ireg_biz_type');
+  const div=document.getElementById('ireg_custom_div');
+  if(sel&&div) div.style.display=sel.value==='custom'?'block':'none';
+}
+
+function saveInlineFirm(){
+  const name    = document.getElementById('ireg_firm').value.trim();
+  const pass    = document.getElementById('ireg_pass').value;
+  const pass2   = document.getElementById('ireg_pass2').value;
+  const err     = document.getElementById('iregErr');
+  err.style.display='none';
+
+  if(!name){ err.textContent='Enter firm name'; err.style.display='block'; return; }
+  if(pass.length<4){ err.textContent='Password must be at least 4 characters'; err.style.display='block'; return; }
+  if(pass!==pass2){ err.textContent='Passwords do not match'; err.style.display='block'; return; }
+
+  const firms = getFirms();
+  if(firms.length>=10){ err.textContent='Maximum 10 firms allowed'; err.style.display='block'; return; }
+  const id = name.toUpperCase().replace(/[^A-Z0-9]/g,'_').replace(/__+/g,'_');
+  if(firms.find(f=>f.id===id)){ err.textContent='Firm with this name already exists'; err.style.display='block'; return; }
+
+  let bizType = document.getElementById('ireg_biz_type').value || 'general';
+  if(bizType==='custom'){
+    const cb = document.getElementById('ireg_custom_biz') ? document.getElementById('ireg_custom_biz').value.trim() : '';
+    bizType = cb ? 'custom_'+cb.toLowerCase().replace(/\s+/g,'_') : 'general';
+    if(cb && typeof BUSINESS_CATEGORIES!=='undefined'){
+      BUSINESS_CATEGORIES[bizType]={label:cb,icon:'🏪',cats:[cb+' Item 1',cb+' Item 2','Other '+cb]};
+    }
+  }
+
+  firms.push({
+    id, name:name.toUpperCase(),
+    owner:   document.getElementById('ireg_owner').value.trim(),
+    address: document.getElementById('ireg_address').value.trim(),
+    phone:   document.getElementById('ireg_phone').value.trim(),
+    phone2:  document.getElementById('ireg_phone2').value.trim(),
+    tagline: document.getElementById('ireg_tagline').value.trim(),
+    blessingLeft:   document.getElementById('ireg_blessing_left').value.trim(),
+    blessingCenter: document.getElementById('ireg_blessing_center').value.trim(),
+    businessType: bizType, pass,
+    fy: getCurrentFYLabel(), created: new Date().toISOString()
+  });
+  saveFirms(firms);
+  populateLoginDropdown();
+  document.getElementById('inlineRegModal').style.display='none';
+  if(typeof mdToast==='function') mdToast('✅ Firm "'+name.toUpperCase()+'" created!');
+  // Show manage firms again
+  setTimeout(showManageFirms, 500);
+}
+
+// ── Re-apply language on every page change — only when non-English ──
+document.addEventListener('DOMContentLoaded', function(){
+  const origShowPage2 = window.showPage;
+  if(origShowPage2){
+    window.showPage = function(name){
+      origShowPage2(name);
+      // Only run expensive applyLanguage if user has changed language
+      if(getLang() !== 'en') applyLanguage();
+    };
+  }
+});
+
+// ════════════════════════════════════════
+//  LANGUAGE MODAL — simple & obvious
+// ════════════════════════════════════════
+function openLangModal(){
+  const lang = getLang();
+  const grid = document.getElementById('langBtnGrid');
+  if(grid){
+    grid.innerHTML = Object.entries(TRANSLATIONS).map(([code, tr]) => {
+      const isActive = code === lang;
+      return `<button onclick="setLangAndClose('${code}')"
+        style="padding:12px 10px;border:2px solid ${isActive?'var(--md-primary)':'var(--md-outline)'};
+        border-radius:var(--md-radius-lg);
+        background:${isActive?'var(--md-primary-container)':'var(--md-surface)'};
+        cursor:pointer;font-family:var(--font-ui);display:flex;align-items:center;gap:8px;
+        text-align:left;transition:all .1s;width:100%">
+        <span style="font-size:22px">🇮🇳</span>
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:700;color:${isActive?'var(--md-primary)':'var(--md-on-surface)'}">${tr.nativeName}</div>
+          <div style="font-size:10px;color:var(--md-on-surface-muted);font-weight:400">${tr.region}</div>
+        </div>
+        ${isActive?'<span style="margin-left:auto;color:var(--md-primary);font-size:16px">✓</span>':''}
+      </button>`;
+    }).join('');
+    // Fix English flag
+    const enBtn = grid.querySelector('button[onclick="setLangAndClose(\'en\')"]');
+    if(enBtn){ const flag = enBtn.querySelector('span'); if(flag) flag.textContent = '🇬🇧'; }
+  }
+  document.getElementById('langModal').classList.add('open');
+}
+
+function closeLangModal(){
+  document.getElementById('langModal').classList.remove('open');
+}
+
+function setLangAndClose(code){
+  setLang(code);
+  // Update topbar button label
+  const tr = TRANSLATIONS[code] || TRANSLATIONS.en;
+  const topBtn = document.getElementById('topLangBtn');
+  if(topBtn) topBtn.textContent = '🌐 ' + (tr.nativeName || code.toUpperCase());
+  closeLangModal();
+  applyLanguage();
+}
+
+// Update topbar language label on init
+document.addEventListener('DOMContentLoaded', function(){
+  const lang = getLang();
+  const tr = TRANSLATIONS[lang] || TRANSLATIONS.en;
+  const topBtn = document.getElementById('topLangBtn');
+  if(topBtn) topBtn.textContent = '🌐 ' + (tr.nativeName || lang.toUpperCase());
+});
+
+// ════════════════════════════════════════
+//  ADD CATEGORY MODAL — UNIFIED & FIXED
+// ════════════════════════════════════════
+
+// ── Single source of truth: always use CU prefix (falls back to 'DEFAULT' if not logged in yet) ──
+function _getCatKey(){
+  return (typeof CU !== 'undefined' && CU ? CU : 'DEFAULT') + '_custom_cats';
+}
+
+function _safeGetCustomCats(){
+  try { return JSON.parse(localStorage.getItem(_getCatKey()) || '[]'); }
+  catch(e){ return []; }
+}
+
+function _safeSaveCustomCats(cats){
+  localStorage.setItem(_getCatKey(), JSON.stringify(cats));
+}
+
+function _safeAddCat(catName){
+  if(!catName || !catName.trim()) return null;
+  const name = catName.trim();
+  const cats = _safeGetCustomCats();
+  if(!cats.map(c=>c.toLowerCase()).includes(name.toLowerCase())){
+    cats.push(name);
+    _safeSaveCustomCats(cats);
+  }
+  return name;
+}
+
+function _safeGetAllCats(){
+  const type = (typeof getBusinessType === 'function') ? getBusinessType() : 'general';
+  const BCAT = (typeof BUSINESS_CATEGORIES !== 'undefined') ? BUSINESS_CATEGORIES : {};
+  const base = (BCAT[type] && BCAT[type].cats) ? BCAT[type].cats : [];
+  const custom = _safeGetCustomCats();
+  return [...new Set([...base, ...custom])];
+}
+
+// Keep getAllCustomCategories / saveCustomCategories / getAllCategories in sync with the single key
+function getAllCustomCategories(){
+  return _safeGetCustomCats();
+}
+function saveCustomCategories(cats){
+  _safeSaveCustomCats(cats);
+}
+function getAllCategories(){
+  return _safeGetAllCats();
+}
+
+// Refresh ALL category dropdowns in the app at once
+function _refreshAllCatSelects(){
+  fillCategorySelect('p_cat');
+  if(document.getElementById('ep_cat')) fillCategorySelect('ep_cat');
+}
+
+// Quick-add suggestions per business type
+const CAT_SUGGESTIONS = {
+  textile:     ['Silk Saree','Cotton Saree','Chaniya Choli','Lehenga Set','Kids Wear',
+                'Gents Kurta','Ladies Suit','Fancy Fabric','Dupatta Set','Party Wear',
+                'Blouse Piece','Kurti','Shawl','Suit Material'],
+  grocery:     ['Dairy Products','Packaged Food','Beverages','Snacks','Spices','Dry Fruits',
+                'Cleaning Items','Personal Care','Bakery','Rice','Dal & Pulses','Cooking Oil'],
+  electronics: ['Mobile Accessories','Earphones','Charger','Power Bank','Smart Watch',
+                'Laptop Parts','LED Bulb','Cable & Wire','Mobile Phones','Computers & Parts'],
+  hardware:    ['Cement','Paint','Pipe & Fittings','Electric Wire','Tools','Tiles',
+                'Nuts & Bolts','Door Fittings','Safety Items','Steel & Iron','Glass'],
+  medical:     ['Tablets','Syrups','Injections','Surgical Items','Baby Care',
+                'Vitamins','Ayurvedic','OTC Medicines','Health Supplements','Skin Care'],
+  stationery:  ['Notebooks & Copies','Pens & Pencils','Files & Folders','Art & Craft',
+                'Books & Textbooks','Bags','School Supplies','Office Stationery'],
+  furniture:   ['Sofa & Chairs','Beds & Mattresses','Tables & Desks','Wardrobes',
+                'Curtains','Decor Items','Kitchen Furniture','Office Furniture'],
+  auto:        ['Engine Parts','Tyres & Tubes','Battery','Filters','Oils & Lubricants',
+                'Lights & Electrical','Body Parts','Two Wheeler Parts'],
+  jewellery:   ['Gold Jewellery','Silver Jewellery','Artificial Jewellery','Diamond',
+                'Watches','Bangles','Chains','Rings'],
+  restaurant:  ['Veg Food Items','Non-Veg Items','Beverages & Drinks','Sweets & Mithai',
+                'Bakery Items','Snacks','Thali & Combos','Catering Service'],
+  services:    ['Consulting Fees','Software Development','Website Design','Accounting Service',
+                'Legal Service','Repair & Maintenance','Transportation','Labour Charges'],
+  agriculture: ['Seeds','Fertilizers','Pesticides','Farm Equipment','Irrigation Parts',
+                'Organic Products','Animal Feed','Vegetables','Fruits'],
+  footwear:    ['Gents Shoes','Ladies Shoes','Kids Shoes','Sandals & Chappals',
+                'Sports Shoes','Formal Shoes','Casual Shoes','School Shoes'],
+  general:     ['Category A','Category B','Service Items','Seasonal Items',
+                'Import Items','Special Items','Premium Items','Regular Items'],
+};
+
+function _renderCatModalContent(){
+  const custom   = _safeGetCustomCats();
+  const chipsDiv = document.getElementById('existingCatsChips');
+  const listDiv  = document.getElementById('existingCatsList');
+
+  // ── Existing custom categories ──
+  if(chipsDiv){
+    if(custom.length > 0){
+      chipsDiv.innerHTML = custom.map((c,i) =>
+        `<span style="background:#fff3e0;color:#d4790f;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;border:1px solid #f0932b">
+          ${c}
+          <button onclick="deleteMyCat(${i})" style="background:none;border:none;color:#e74c3c;font-size:16px;cursor:pointer;padding:0;line-height:1;font-weight:bold" title="Remove">×</button>
+        </span>`
+      ).join('');
+    } else {
+      chipsDiv.innerHTML = '<span style="font-size:12px;color:#aaa;font-style:italic">No custom categories added yet</span>';
+    }
+  }
+  if(listDiv) listDiv.style.display = 'block';
+
+  // ── Quick-add suggestions ──
+  const type = (typeof getBusinessType === 'function') ? getBusinessType() : 'general';
+  const suggestions = CAT_SUGGESTIONS[type] || CAT_SUGGESTIONS['general'];
+  const existing = _safeGetAllCats().map(c => c.toLowerCase());
+  const sugg = suggestions.filter(s => !existing.includes(s.toLowerCase())).slice(0, 10);
+  const suggDiv = document.getElementById('catSuggestions');
+  if(suggDiv){
+    if(sugg.length > 0){
+      suggDiv.innerHTML = sugg.map(s =>
+        `<button onclick="quickAddMyCat(this,'${s.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"
+          style="background:#f5f6fa;border:1px solid #e0e4ed;border-radius:20px;padding:6px 12px;font-size:12px;font-weight:500;color:#4a5568;cursor:pointer;font-family:inherit;transition:all .15s">${s}</button>`
+      ).join('');
+    } else {
+      suggDiv.innerHTML = '<span style="font-size:12px;color:#aaa;font-style:italic">All suggestions already added!</span>';
+    }
+  }
+}
+
+// Track which modal was open when category modal was triggered
+let _catModalReturnTo = null;
+
+function openAddCategoryModal(){
+  const modal = document.getElementById('addCategoryModal');
+  if(!modal){ if(typeof mdToast==='function') mdToast('⚠️ Modal not found'); return; }
+
+  // Remember which modal was open behind (so we can restore it on close)
+  _catModalReturnTo = null;
+  ['addProductModal','editProductModal'].forEach(id => {
+    const m = document.getElementById(id);
+    if(m && m.classList.contains('open')) _catModalReturnTo = id;
+  });
+
+  // Clear input & error
+  const inp = document.getElementById('newCatInput');
+  const err = document.getElementById('addCatError');
+  if(inp) inp.value = '';
+  if(err) err.style.display = 'none';
+
+  // Render chips & suggestions
+  _renderCatModalContent();
+
+  // Open on top
+  modal.classList.add('open');
+  if(inp) inp.focus();
+}
+
+function closeAddCategoryModal(){
+  const modal = document.getElementById('addCategoryModal');
+  if(modal) modal.classList.remove('open');
+
+  // Refresh every category dropdown in the app
+  _refreshAllCatSelects();
+
+  // Restore the product modal that was open behind
+  if(_catModalReturnTo){
+    const behind = document.getElementById(_catModalReturnTo);
+    if(behind) behind.classList.add('open');
+    _catModalReturnTo = null;
+  }
+}
+
+function saveNewCategory(){
+  const inp   = document.getElementById('newCatInput');
+  const errEl = document.getElementById('addCatError');
+  if(!inp) return;
+  const name = inp.value.trim();
+  if(errEl) errEl.style.display = 'none';
+
+  if(!name){
+    if(errEl){ errEl.textContent = '⚠️ Please type a category name first.'; errEl.style.display = 'block'; }
+    if(inp) inp.focus();
+    return;
+  }
+
+  const existing = _safeGetAllCats();
+  if(existing.map(c => c.toLowerCase()).includes(name.toLowerCase())){
+    if(errEl){ errEl.textContent = '⚠️ "'+name+'" already exists!'; errEl.style.display = 'block'; }
+    return;
+  }
+
+  _safeAddCat(name);
+  if(typeof mdToast === 'function') mdToast('✅ Category "'+name+'" added!');
+  inp.value = '';
+
+  // Refresh modal content (stays open so user can add more)
+  _renderCatModalContent();
+
+  // Also refresh all dropdowns immediately
+  _refreshAllCatSelects();
+}
+
+function quickAddMyCat(btn, name){
+  const existing = _safeGetAllCats().map(c => c.toLowerCase());
+  if(existing.includes(name.toLowerCase())){
+    btn.style.background = '#27ae60';
+    btn.style.color = '#fff';
+    btn.style.borderColor = '#27ae60';
+    btn.disabled = true;
+    btn.textContent = '✓ Already exists';
+    return;
+  }
+  _safeAddCat(name);
+  btn.style.background = '#27ae60';
+  btn.style.color = '#fff';
+  btn.style.borderColor = '#27ae60';
+  btn.disabled = true;
+  btn.textContent = '✓ ' + name;
+  if(typeof mdToast === 'function') mdToast('✅ "'+name+'" added!');
+  _refreshAllCatSelects();
+  _renderCatModalContent();
+}
+
+function deleteMyCat(index){
+  const cats = _safeGetCustomCats();
+  if(index < 0 || index >= cats.length) return;
+  const removed = cats[index];
+  cats.splice(index, 1);
+  _safeSaveCustomCats(cats);
+  if(typeof mdToast === 'function') mdToast('🗑️ "'+removed+'" removed');
+  _refreshAllCatSelects();
+  _renderCatModalContent(); // refresh chips without closing modal
 }
 </script>
 </body>
