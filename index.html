@@ -9,7 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="MOJ">
 <meta name="theme-color" content="#1a1f2e">
 <meta name="description" content="MOJ — GST Accounting System for Textile Business">
-<link type="icon" href="C:\Users\Admin\Desktop\HIT\C++ PROGRAMING\other\ACCOUNTING MANAGEMENT SYSTEM/icon.jpeg">
+<link href="C:\Users\Admin\Desktop\HIT\C++ PROGRAMING\other\ACCOUNTING MANAGEMENT SYSTEM/icon.jpeg">
+
 <title>MOJ — Accounting</title>
 
 <!-- PWA Manifest inline -->
@@ -2942,6 +2943,9 @@ function saveSale(){
   const sales=load('sales');
   const bno=(sales.length?Math.max(...sales.map(s=>s.billNo)):0)+1;
   const base=saleItems.reduce((s,i)=>s+i.amount,0);
+  // Total discount across all items
+  const totalDiscount=parseFloat(saleItems.reduce((s,i)=>s+(i.discAmt||0),0).toFixed(2));
+  const grossBeforeDisc=saleItems.reduce((s,i)=>s+(i.qty*i.price),0);
   const g=getGSTRates(gstType);
   const cgst=base*g.cgst;
   const sgst=base*g.sgst;
@@ -2949,7 +2953,11 @@ function saveSale(){
   const gstAmt=base*g.rate;
   const net=Math.round(base+gstAmt);
 
-  sales.push({billNo:bno,party,date,mode,dueDate,base,cgst,sgst,igst,gstRate:g.rate,gstType,total:net,withGST:g.rate>0,isInterState:g.isInter,items:[...saleItems]});
+  sales.push({billNo:bno,party,date,mode,dueDate,
+    base,cgst,sgst,igst,gstRate:g.rate,gstType,
+    total:net,withGST:g.rate>0,isInterState:g.isInter,
+    totalDiscount,grossBeforeDisc,
+    items:[...saleItems]});
   save('sales',sales);
 
   const products=loadShared('products');
@@ -2959,20 +2967,32 @@ function saveSale(){
   });
   saveShared('products',products);
 
-  // Ledger: SALE entry creates receivable (debtor)
-  addLedger(date,party,'SALE',String(bno),net);
+  // Ledger: SALE entry creates receivable (debtor) — GROSS amount (before discount) + GST
+  // This ensures DISCOUNT_GIVEN properly reduces receivable to the net billed amount
+  const grossForLedger = totalDiscount > 0 ? Math.round(grossBeforeDisc*(1+g.rate)) : net;
+  addLedger(date,party,'SALE',String(bno),grossForLedger);
+  // If discount given → record discount expense in ledger AND expense table
+  if(totalDiscount>0){
+    // Discount in ledger = difference between gross ledger and net (includes GST proportioning)
+    const discForLedger = parseFloat((grossForLedger - net).toFixed(2));
+    addLedger(date,party,'DISCOUNT_GIVEN','Bill#'+bno,discForLedger);
+    // Also save to expense store so it appears in P&L
+    const expD=load('expense');
+    expD.push({date,desc:'Discount Given on Bill#'+bno+' Party:'+party,amount:discForLedger,type:'DISCOUNT_GIVEN'});
+    save('expense',expD);
+  }
 
   if(mode==='CASH'){
     const cash=load('cash');
     cash.push({date,type:'RECEIPT',party,desc:'Sale Bill#'+bno,amount:net});
     save('cash',cash);
-    // Ledger: cancel debtor immediately — cash received
+    // Ledger: cancel debtor for net amount (after discount)
     addLedger(date,party,'CASH_RECEIPT','Sale Bill#'+bno,net);
   } else if(mode==='BANK'){
     const bank=load('bank');
     bank.push({date,type:'RECEIPT',party,mode:'NEFT',desc:'Sale Bill#'+bno,amount:net});
     save('bank',bank);
-    // Ledger: cancel debtor immediately — bank received
+    // Ledger: cancel debtor for net amount (after discount)
     addLedger(date,party,'BANK_RECEIPT','Sale Bill#'+bno,net);
   }
   // mode=CREDIT: no ledger receipt → party stays as debtor until payment received
@@ -2991,13 +3011,19 @@ function renderSales(){
   document.getElementById('saleBody').innerHTML=[...sales].reverse().map(s=>{
     const isOverdue=s.mode==='CREDIT'&&s.dueDate&&isDateBefore(s.dueDate,today);
     const isPaid=s.mode!=='CREDIT';
-    let modeBadge=`<span class="badge ${isPaid?'badge-green':isOverdue?'badge-red':'badge-orange'}">${s.mode}${isOverdue?' ⚠️OVERDUE':s.dueDate&&s.mode==='CREDIT'?' ('+s.dueDate+')':''}</span>`;
+    const hasBatav=s.batavAmt>0;
+    let modeBadge=`<span class="badge ${isPaid?'badge-green':isOverdue?'badge-red':'badge-orange'}">${s.mode}${isOverdue?' ⚠️OVERDUE':s.dueDate&&s.mode==='CREDIT'?' ('+s.dueDate+')':''}</span>${hasBatav?'<br><span class="badge" style="background:#8e44ad;color:#fff;font-size:10px">🔖 Batav</span>':''}`;
     return `<tr style="${isOverdue?'background:#fff5f5':''}">
       <td><b>#${s.billNo}</b></td>
       <td>${s.party}</td>
       <td>${s.date}</td>
       <td>${modeBadge}</td>
-      <td><b>₹${(s.total||0).toFixed(2)}</b><br><small style="color:var(--muted)">Base:₹${(s.base||0).toFixed(2)}</small></td>
+      <td>
+        <b>₹${(s.total||0).toFixed(2)}</b>
+        ${s.totalDiscount>0?`<br><small style="color:var(--red)">Disc: -₹${s.totalDiscount.toFixed(2)}</small>`:''}
+        ${s.batavAmt>0?`<br><small style="color:#8e44ad">Batav: -₹${s.batavAmt.toFixed(2)}</small>`:''}
+        <br><small style="color:var(--muted)">Base:₹${(s.base||0).toFixed(2)}</small>
+      </td>
       <td style="white-space:nowrap">
         <button class="btn btn-blue btn-sm" onclick="printBill(${s.billNo})" title="Print">🖨</button>
         <button class="btn btn-orange btn-sm" onclick="shareBillPDF(${s.billNo})" title="Share PDF">📄</button>
@@ -3020,23 +3046,111 @@ function markBillPaid(bno){
   const sales=load('sales');
   const bill=sales.find(s=>s.billNo===bno);
   if(!bill){return;}
-  const mode=prompt('Payment received via?\n\nEnter 1 for CASH\nEnter 2 for BANK','1');
-  if(!mode) return;
-  const payMode=mode.trim()==='2'?'BANK':'CASH';
-  const date=todayDMY();
-  bill.mode=payMode;
-  bill.dueDate='';
-  save('sales',sales);
-  // Add cash/bank receipt + ledger receipt
-  if(payMode==='CASH'){
-    const c=load('cash'); c.push({date,type:'RECEIPT',party:bill.party,desc:'Payment Bill#'+bno,amount:bill.total}); save('cash',c);
-    addLedger(date,bill.party,'CASH_RECEIPT','Payment Bill#'+bno,bill.total);
-  } else {
-    const b=load('bank'); b.push({date,type:'RECEIPT',party:bill.party,mode:'NEFT',desc:'Payment Bill#'+bno,amount:bill.total}); save('bank',b);
-    addLedger(date,bill.party,'BANK_RECEIPT','Payment Bill#'+bno,bill.total);
+  openBatavModal(bno);
+}
+
+// ─── BATAV MODAL ────────────────────────────────────────
+// Batav = amount written off / forgiven when customer pays less than bill
+// English: "Settlement Discount" or "Bad Debt Written Off"
+// Accounting: Dr BATAV (Expense) / Cr Debtor (Party)
+// ─────────────────────────────────────────────────────────
+let _batavBillNo = null;
+function openBatavModal(bno){
+  const sales=load('sales');
+  const bill=sales.find(s=>s.billNo===bno);
+  if(!bill) return;
+  _batavBillNo = bno;
+  const el = id => document.getElementById(id);
+  // Set bill details in modal
+  if(el('batav_bill_no'))   el('batav_bill_no').textContent   = '#'+bno;
+  if(el('batav_bill_amt'))  el('batav_bill_amt').textContent  = '₹'+bill.total.toFixed(2);
+  if(el('batav_party'))     el('batav_party').textContent     = bill.party;
+  if(el('batav_received'))  el('batav_received').value        = bill.total;
+  if(el('batav_amt'))       el('batav_amt').value             = '0';
+  if(el('batav_mode'))      el('batav_mode').value            = 'CASH';
+  if(el('batav_date'))      el('batav_date').value            = todayDMY();
+  if(el('batav_summary'))   el('batav_summary').innerHTML     = '';
+  calcBatav();
+  openModal('batavModal');
+}
+
+function calcBatav(){
+  const bill = load('sales').find(s=>s.billNo===_batavBillNo);
+  if(!bill) return;
+  const received = parseFloat(document.getElementById('batav_received').value)||0;
+  const batav    = parseFloat((bill.total - received).toFixed(2));
+  const el = id => document.getElementById(id);
+  if(el('batav_amt')) el('batav_amt').value = batav >= 0 ? batav.toFixed(2) : '0';
+  if(el('batav_summary')){
+    if(batav > 0){
+      el('batav_summary').innerHTML =
+        `<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px;margin-top:8px;font-size:13px">
+          <b>🔖 Batav (બટાવ / बट्टा): ₹${batav.toFixed(2)}</b><br>
+          <small style="color:#856404">Bill was ₹${bill.total.toFixed(2)}, customer paid ₹${received.toFixed(2)}.<br>
+          ₹${batav.toFixed(2)} will be written off as <b>Batav Expense</b> in P&L.<br>
+          Accounting: <b>Dr Batav A/c ₹${batav.toFixed(2)} | Cr ${bill.party} ₹${batav.toFixed(2)}</b></small>
+        </div>`;
+    } else if(batav < 0){
+      el('batav_summary').innerHTML =
+        `<div style="background:#fdecea;border:1px solid #e74c3c;border-radius:8px;padding:10px;margin-top:8px;font-size:13px">
+          ⚠️ Amount entered is more than bill total. Please check.
+        </div>`;
+    } else {
+      el('batav_summary').innerHTML =
+        `<div style="background:#d4edda;border:1px solid #27ae60;border-radius:8px;padding:8px;margin-top:8px;font-size:12px">
+          ✅ Full payment received. No Batav.
+        </div>`;
+    }
   }
+}
+
+function saveBatavPayment(){
+  const sales=load('sales');
+  const bill=sales.find(s=>s.billNo===_batavBillNo);
+  if(!bill){ closeModal('batavModal'); return; }
+
+  const received  = parseFloat(document.getElementById('batav_received').value)||0;
+  const batav     = parseFloat((bill.total - received).toFixed(2));
+  const payMode   = document.getElementById('batav_mode').value;
+  const date      = document.getElementById('batav_date').value || todayDMY();
+  const bno       = _batavBillNo;
+
+  if(received <= 0){ alert('Enter amount received'); return; }
+  if(received > bill.total){ alert('Amount cannot exceed bill total ₹'+bill.total.toFixed(2)); return; }
+
+  // Update bill status
+  bill.mode    = payMode;
+  bill.dueDate = '';
+  bill.paidAmt  = received;
+  bill.batavAmt = batav > 0 ? batav : 0;
+  save('sales',sales);
+
+  // Record cash/bank receipt for the amount ACTUALLY received
+  if(payMode==='CASH'){
+    const c=load('cash');
+    c.push({date,type:'RECEIPT',party:bill.party,desc:'Payment Bill#'+bno+(batav>0?' (Batav: ₹'+batav.toFixed(2)+')':''),amount:received});
+    save('cash',c);
+    addLedger(date,bill.party,'CASH_RECEIPT','Payment Bill#'+bno,received);
+  } else {
+    const b=load('bank');
+    b.push({date,type:'RECEIPT',party:bill.party,mode:'NEFT',desc:'Payment Bill#'+bno+(batav>0?' (Batav: ₹'+batav.toFixed(2)+')':''),amount:received});
+    save('bank',b);
+    addLedger(date,bill.party,'BANK_RECEIPT','Payment Bill#'+bno,received);
+  }
+
+  // If there is Batav — write off the difference
+  // Dr BATAV_EXPENSE / Cr Debtor (party) — clears the remaining balance
+  if(batav > 0){
+    addLedger(date,bill.party,'BATAV','Bill#'+bno,batav);
+    // Also add to expense ledger for P&L
+    const exp=load('expense');
+    exp.push({date,desc:'Batav (Settlement) on Bill#'+bno+' Party:'+bill.party,amount:batav,type:'BATAV'});
+    save('expense',exp);
+  }
+
+  closeModal('batavModal');
   renderSales(); renderCashBank(); loadDashboard();
-  alert('✅ Bill #'+bno+' marked as paid via '+payMode+'!');
+  mdToast('✅ Bill #'+bno+' settled! Received: ₹'+received.toFixed(2)+(batav>0?' | Batav: ₹'+batav.toFixed(2):''));
 }
 
 // WhatsApp share — opens bill in new tab then triggers share
@@ -3108,10 +3222,15 @@ function deleteSale(bno){
     saveShared('products',products);
 
     // 2. Remove ALL ledger entries linked to this bill
-    //    (SALE entry + CASH_RECEIPT/BANK_RECEIPT that was added to cancel debtor)
+    //    (SALE + CASH_RECEIPT/BANK_RECEIPT + DISCOUNT_GIVEN + BATAV)
     let ledger=load('ledger');
-    ledger=ledger.filter(l=>!(l.ref===String(bno) && ['SALE','CASH_RECEIPT','BANK_RECEIPT'].includes(l.type)));
+    ledger=ledger.filter(l=>!(l.ref===String(bno) && ['SALE','CASH_RECEIPT','BANK_RECEIPT','DISCOUNT_GIVEN','BATAV'].includes(l.type)));
     save('ledger',ledger);
+
+    // 2b. Remove expense entries linked to this bill (discount + batav)
+    let exp=load('expense');
+    exp=exp.filter(e=>!(e.desc && e.desc.includes('Bill#'+bno)));
+    save('expense',exp);
 
     // 3. Remove cash/bank book entries (all variants of description)
     const billDesc='Sale Bill#'+bno;
@@ -3226,15 +3345,21 @@ function savePurchase(){
 
 function renderPurchases(){
   const purs=load('purchases');
-  document.getElementById('purBody').innerHTML=[...purs].reverse().map(p=>`
-    <tr>
+  document.getElementById('purBody').innerHTML=[...purs].reverse().map(p=>{
+    const isCredit=p.mode==='CREDIT';
+    const hasBatav=p.batavAmt>0;
+    const settleBtn=isCredit&&!hasBatav
+      ?`<button class="btn btn-sm" style="background:#8e44ad;color:#fff;font-size:10px;padding:3px 7px;border-radius:8px;margin-right:4px" onclick="openPurSettleModal(${p.billNo})">🔖 Settle</button>`
+      :(hasBatav?`<span class="badge" style="background:#8e44ad;color:#fff;font-size:10px">🔖 Settled</span>`:'');
+    return `<tr>
       <td><b>#${p.billNo}</b></td>
       <td>${p.supBill||'-'}</td>
       <td>${p.party}</td>
       <td>${p.date}</td>
-      <td><b>₹${p.total.toFixed(2)}</b></td>
-      <td><button class="btn btn-red btn-sm" onclick="deletePurchase(${p.billNo})">Del</button></td>
-    </tr>`).join('');
+      <td><b>₹${p.total.toFixed(2)}</b>${hasBatav?`<br><small style="color:#8e44ad">Batav: -₹${p.batavAmt.toFixed(2)}</small>`:''}</td>
+      <td>${settleBtn}<button class="btn btn-red btn-sm" onclick="deletePurchase(${p.billNo})">Del</button></td>
+    </tr>`;
+  }).join('');
 }
 
 function deletePurchase(bno){
@@ -3251,10 +3376,14 @@ function deletePurchase(bno){
     saveShared('products',products);
 
     // 2. Remove ALL ledger entries for this purchase bill
-    //    (PURCHASE entry + CASH_PAYMENT/BANK_PAYMENT that settled it)
+    //    (PURCHASE + CASH_PAYMENT/BANK_PAYMENT + DISCOUNT_RECEIVED + BATAV_RECEIVED)
     let ledger=load('ledger');
-    ledger=ledger.filter(l=>!(l.ref===String(bno) && ['PURCHASE','CASH_PAYMENT','BANK_PAYMENT'].includes(l.type)));
+    ledger=ledger.filter(l=>!(l.ref===String(bno) && ['PURCHASE','CASH_PAYMENT','BANK_PAYMENT','DISCOUNT_RECEIVED','BATAV_RECEIVED'].includes(l.type)));
     save('ledger',ledger);
+    // Also remove linked income entries (discount received + batav received)
+    let incDel=load('income');
+    incDel=incDel.filter(e=>!(e.desc&&e.desc.includes('Bill#'+bno)));
+    save('income',incDel);
 
     // 3. Remove cash/bank book entries
     const billDesc='Purchase Bill#'+bno;
@@ -3270,9 +3399,97 @@ function deletePurchase(bno){
   renderPurchases(); loadDashboard();
 }
 
-// ════════════════════════════════════════
-//  CASH & BANK
-// ════════════════════════════════════════
+// ─── PURCHASE SETTLEMENT MODAL ──────────────────────────
+// When supplier gives US discount or batav on their bill
+// Accounting: Dr Creditor / Cr DISCOUNT_RECEIVED or BATAV_RECEIVED (Income)
+// ─────────────────────────────────────────────────────────
+let _purSettleBillNo = null;
+function openPurSettleModal(bno){
+  const purs=load('purchases');
+  const bill=purs.find(p=>p.billNo===bno);
+  if(!bill) return;
+  _purSettleBillNo=bno;
+  if(el('ps_bill_no'))    el('ps_bill_no').textContent    = '#'+bno;
+  if(el('ps_party'))      el('ps_party').textContent      = bill.party;
+  if(el('ps_bill_amt'))   el('ps_bill_amt').textContent   = '₹'+bill.total.toFixed(2);
+  if(el('ps_paid'))       el('ps_paid').value             = bill.total;
+  if(el('ps_mode'))       el('ps_mode').value             = 'CASH';
+  if(el('ps_date'))       el('ps_date').value             = todayDMY();
+  if(el('ps_summary'))    el('ps_summary').innerHTML      = '';
+  calcPurSettle();
+  openModal('purSettleModal');
+}
+
+function calcPurSettle(){
+  const purs=load('purchases');
+  const bill=purs.find(p=>p.billNo===_purSettleBillNo);
+  if(!bill||!el('ps_paid')) return;
+  const paid=parseFloat(el('ps_paid').value)||0;
+  const diff=parseFloat((bill.total-paid).toFixed(2)); // how much supplier forgave us
+  if(el('ps_batav_amt')) el('ps_batav_amt').textContent=diff>=0?diff.toFixed(2):'0';
+  if(el('ps_summary')){
+    if(diff>0){
+      el('ps_summary').innerHTML=`<div style="background:#f0fff4;border-radius:10px;padding:10px;margin-top:8px;font-size:12px">
+        <b>🎁 Batav/Discount from Supplier: ₹${diff.toFixed(2)}</b><br>
+        <span style="color:#555">Supplier forgave ₹${diff.toFixed(2)} — recorded as <b>Income</b> in your P&L.<br>
+        Accounting: <b>Dr ${bill.party} ₹${diff.toFixed(2)} | Cr Batav Received A/c ₹${diff.toFixed(2)}</b></span>
+      </div>`;
+    } else if(diff<0){
+      el('ps_summary').innerHTML=`<div style="background:#fff5f5;border-radius:10px;padding:10px;margin-top:8px;font-size:12px;color:#c0392b">
+        ⚠️ Amount paid exceeds bill total by ₹${Math.abs(diff).toFixed(2)}. Please correct.
+      </div>`;
+    } else {
+      el('ps_summary').innerHTML=`<div style="background:#f0fff4;border-radius:10px;padding:8px;margin-top:8px;font-size:12px;color:#155724">
+        ✅ Full payment — no batav.
+      </div>`;
+    }
+  }
+}
+
+function savePurSettlePayment(){
+  const purs=load('purchases');
+  const bill=purs.find(p=>p.billNo===_purSettleBillNo);
+  if(!bill){ closeModal('purSettleModal'); return; }
+
+  const paid    = parseFloat(el('ps_paid').value)||0;
+  const batav   = parseFloat((bill.total - paid).toFixed(2));
+  const payMode = el('ps_mode').value;
+  const date    = el('ps_date').value || todayDMY();
+  const bno     = _purSettleBillNo;
+
+  if(paid<=0){ alert('Enter amount paid'); return; }
+  if(paid > bill.total){ alert('Amount paid cannot exceed bill total'); return; }
+
+  // Record cash/bank payment for the amount actually paid
+  if(payMode==='CASH'){
+    const c=load('cash');
+    c.push({date,type:'PAYMENT',party:bill.party,desc:'Purchase Bill#'+bno+(batav>0?' (Batav: ₹'+batav.toFixed(2)+')':''),amount:paid});
+    save('cash',c);
+    addLedger(date,bill.party,'CASH_PAYMENT','Purchase Bill#'+bno,paid);
+  } else {
+    const b=load('bank');
+    b.push({date,type:'PAYMENT',party:bill.party,mode:'NEFT',desc:'Purchase Bill#'+bno+(batav>0?' (Batav: ₹'+batav.toFixed(2)+')':''),amount:paid});
+    save('bank',b);
+    addLedger(date,bill.party,'BANK_PAYMENT','Purchase Bill#'+bno,paid);
+  }
+
+  // If supplier gave batav/discount → Income entry
+  if(batav>0){
+    // Dr Creditor (party) / Cr BATAV_RECEIVED (Income)
+    addLedger(date,bill.party,'BATAV_RECEIVED','Bill#'+bno,batav);
+    const inc=load('income');
+    inc.push({date,desc:'Batav Received on Purchase Bill#'+bno+' Supplier:'+bill.party,amount:batav,type:'BATAV_RECEIVED'});
+    save('income',inc);
+    bill.batavAmt=batav;
+  }
+
+  save('purchases',purs);
+  closeModal('purSettleModal');
+  renderPurchases(); renderCashBank(); loadDashboard();
+  mdToast('✅ Purchase Bill #'+bno+' settled! Paid: ₹'+paid.toFixed(2)+(batav>0?' | Batav from supplier: ₹'+batav.toFixed(2):''));
+}
+
+
 function openCashModal(){ fillPartySelect('c_party'); openModal('cashModal'); }
 function openBankModal(){ fillPartySelect('b_party'); openModal('bankModal'); }
 
@@ -3422,11 +3639,19 @@ function deleteLedgerEntry(idx){
   const isCashP=entry.type==='CASH_PAYMENT';
   const isBankR=entry.type==='BANK_RECEIPT';
   const isBankP=entry.type==='BANK_PAYMENT';
+  const isBatav=entry.type==='BATAV';
+  const isDiscGiven=entry.type==='DISCOUNT_GIVEN';
+  const isDiscRcvd=entry.type==='DISCOUNT_RECEIVED';
+  const isBatavRcvd=entry.type==='BATAV_RECEIVED';
 
   if(isSale) msg+='\n\n⚠️ This will also remove:\n• The matching Cash/Bank receipt entry (if any)\n• Stock will be restored';
   if(isPurch) msg+='\n\n⚠️ This will also remove:\n• The matching Cash/Bank payment entry (if any)\n• Stock will be reduced';
   if(isCashR||isCashP) msg+='\n\n⚠️ This will also remove the matching Cash Book entry';
   if(isBankR||isBankP) msg+='\n\n⚠️ This will also remove the matching Bank Book entry';
+  if(isBatav) msg+='\n\n⚠️ This will also remove:\n• The Batav expense record from P&L\n• Bill settlement will be reset';
+  if(isDiscGiven) msg+='\n\n⚠️ This will also remove the Discount expense record from P&L';
+  if(isDiscRcvd) msg+='\n\n⚠️ This will also remove the Discount Received income record from P&L';
+  if(isBatavRcvd) msg+='\n\n⚠️ This will also remove:\n• The Batav Received income record from P&L\n• Purchase bill settlement will be reset';
 
   if(!confirm(msg)) return;
 
@@ -3445,10 +3670,14 @@ function deleteLedgerEntry(idx){
       let bank=load('bank'); bank=bank.filter(b=>!b.desc.startsWith(desc)); save('bank',bank);
     }
     sales=sales.filter(s=>s.billNo!==bno); save('sales',sales);
-    // Remove all ledger entries for this bill (SALE + CASH_RECEIPT/BANK_RECEIPT)
+    // Remove all ledger entries for this bill (SALE + CASH_RECEIPT/BANK_RECEIPT + DISCOUNT_GIVEN + BATAV)
     ledger.splice(idx,1);
-    const cleaned=ledger.filter(l=>!(l.ref===String(bno)&&['CASH_RECEIPT','BANK_RECEIPT'].includes(l.type)));
+    const cleaned=ledger.filter(l=>!(l.ref===String(bno)&&['CASH_RECEIPT','BANK_RECEIPT','DISCOUNT_GIVEN','BATAV'].includes(l.type)));
     save('ledger',cleaned);
+    // Also remove linked expense entries (discount + batav)
+    let expDel=load('expense');
+    expDel=expDel.filter(e=>!(e.desc&&e.desc.includes('Bill#'+bno)));
+    save('expense',expDel);
     renderSales(); loadDashboard(); loadLedger();
     alert('✅ Sale Bill #'+bno+' and all linked entries deleted!');
     return;
@@ -3500,6 +3729,63 @@ function deleteLedgerEntry(idx){
     return;
   }
 
+  // ── BATAV (given to customer) ──
+  if(isBatav && entry.ref){
+    const bno=parseInt(entry.ref);
+    // Remove the matching expense record
+    let expDel=load('expense');
+    expDel=expDel.filter(e=>!(e.type==='BATAV'&&e.desc&&e.desc.includes('Bill#'+bno)));
+    save('expense',expDel);
+    // Reset batavAmt on the sale bill
+    let sales=load('sales');
+    const bill=sales.find(s=>s.billNo===bno);
+    if(bill){ bill.batavAmt=0; save('sales',sales); }
+    ledger.splice(idx,1); save('ledger',ledger);
+    renderSales(); renderIncExp(); loadDashboard(); loadLedger();
+    alert('✅ Batav entry and linked expense deleted. Bill settlement reset.');
+    return;
+  }
+
+  // ── DISCOUNT_GIVEN (given to customer on sale) ──
+  if(isDiscGiven && entry.ref){
+    const billNo=entry.ref.replace('Bill#','');
+    let expDel=load('expense');
+    expDel=expDel.filter(e=>!(e.type==='DISCOUNT_GIVEN'&&e.desc&&e.desc.includes('Bill#'+billNo)));
+    save('expense',expDel);
+    ledger.splice(idx,1); save('ledger',ledger);
+    renderIncExp(); loadDashboard(); loadLedger();
+    alert('✅ Discount Given entry and linked expense deleted.');
+    return;
+  }
+
+  // ── DISCOUNT_RECEIVED (received from supplier) ──
+  if(isDiscRcvd && entry.ref){
+    const billNo=entry.ref.replace('Bill#','');
+    let incDel=load('income');
+    incDel=incDel.filter(e=>!(e.type==='DISCOUNT_RECEIVED'&&e.desc&&e.desc.includes('Bill#'+billNo)));
+    save('income',incDel);
+    ledger.splice(idx,1); save('ledger',ledger);
+    renderIncExp(); loadDashboard(); loadLedger();
+    alert('✅ Discount Received entry and linked income deleted.');
+    return;
+  }
+
+  // ── BATAV_RECEIVED (received from supplier) ──
+  if(isBatavRcvd && entry.ref){
+    const bno=parseInt(entry.ref);
+    let incDel=load('income');
+    incDel=incDel.filter(e=>!(e.type==='BATAV_RECEIVED'&&e.desc&&e.desc.includes('Bill#'+bno)));
+    save('income',incDel);
+    // Reset batavAmt on purchase bill
+    let purs=load('purchases');
+    const pb=purs.find(p=>p.billNo===bno);
+    if(pb){ pb.batavAmt=0; save('purchases',purs); }
+    ledger.splice(idx,1); save('ledger',ledger);
+    renderPurchases(); renderIncExp(); loadDashboard(); loadLedger();
+    alert('✅ Batav Received entry and linked income deleted. Purchase settlement reset.');
+    return;
+  }
+
   // Default: just remove this ledger entry
   ledger.splice(idx,1);
   save('ledger',ledger);
@@ -3508,7 +3794,7 @@ function deleteLedgerEntry(idx){
 }
 
 // Internal accounts that should never appear in debtors/creditors outstanding
-const INTERNAL_ACCOUNTS = ['CAPITAL','DRAWINGS','CAPITAL_ACCOUNT','CAPITAL_STOCK','CAPITAL_ASSET'];
+const INTERNAL_ACCOUNTS = ['CAPITAL','DRAWINGS','CAPITAL_ACCOUNT','CAPITAL_STOCK','CAPITAL_ASSET','DISCOUNT_GIVEN','BATAV_EXPENSE'];
 
 function loadOutstanding(){
   const ledger=load('ledger');
@@ -3517,7 +3803,8 @@ function loadOutstanding(){
     if(!bal[l.party]) bal[l.party]=0;
     if(['SALE','PURCHASE_RETURN','CASH_PAYMENT','BANK_PAYMENT','OPENING_RECEIVABLE'].includes(l.type))
       bal[l.party]+=l.amount;
-    else if(['PURCHASE','CASH_RECEIPT','BANK_RECEIPT','OPENING_PAYABLE','SALE_RETURN'].includes(l.type))
+    else if(['PURCHASE','CASH_RECEIPT','BANK_RECEIPT','OPENING_PAYABLE','SALE_RETURN',
+             'DISCOUNT_GIVEN','BATAV','DISCOUNT_RECEIVED','BATAV_RECEIVED'].includes(l.type))
       bal[l.party]-=l.amount;
     // skip CAPITAL/DRAWING/OTHER_INCOME/OTHER_EXPENSE types
   });
@@ -3799,8 +4086,26 @@ function addExpense(){
 function renderIncExp(){
   const inc=load('income');
   const exp=load('expense');
-  document.getElementById('incBody').innerHTML=inc.map((r,i)=>`<tr><td>${r.date}</td><td>${r.desc}</td><td>₹${r.amount.toFixed(2)}</td><td><button class="btn btn-red btn-sm" onclick="delInc(${i})">✕</button></td></tr>`).join('');
-  document.getElementById('expBody').innerHTML=exp.map((r,i)=>`<tr><td>${r.date}</td><td>${r.desc}</td><td>₹${r.amount.toFixed(2)}</td><td><button class="btn btn-red btn-sm" onclick="delExp(${i})">✕</button></td></tr>`).join('');
+  document.getElementById('incBody').innerHTML=inc.map((r,i)=>{
+    const isAutoInc = r.type==='DISCOUNT_RECEIVED'||r.type==='BATAV_RECEIVED';
+    const badge = isAutoInc
+      ? `<span style="background:${r.type==='BATAV_RECEIVED'?'#27ae60':'#2980b9'};color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:4px">${r.type==='BATAV_RECEIVED'?'Batav Rcvd':'Disc Rcvd'}</span>`
+      : '';
+    const delBtn = isAutoInc
+      ? `<button class="btn btn-sm" style="background:#ddd;color:#999;cursor:not-allowed" title="Delete from Purchase Settle modal" disabled>🔒</button>`
+      : `<button class="btn btn-red btn-sm" onclick="delInc(${i})">✕</button>`;
+    return `<tr><td>${r.date}</td><td>${r.desc}${badge}</td><td>₹${r.amount.toFixed(2)}</td><td>${delBtn}</td></tr>`;
+  }).join('');
+  document.getElementById('expBody').innerHTML=exp.map((r,i)=>{
+    const isAuto = r.type==='BATAV'||r.type==='DISCOUNT_GIVEN';
+    const badge  = isAuto
+      ? `<span style="background:${r.type==='BATAV'?'#8e44ad':'#e74c3c'};color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:4px">${r.type==='BATAV'?'Batav':'Discount'}</span>`
+      : '';
+    const delBtn = isAuto
+      ? `<button class="btn btn-sm" style="background:#ddd;color:#999;cursor:not-allowed" title="Delete from Sales/Batav modal" disabled>🔒</button>`
+      : `<button class="btn btn-red btn-sm" onclick="delExp(${i})">✕</button>`;
+    return `<tr><td>${r.date}</td><td>${r.desc}${badge}</td><td>₹${r.amount.toFixed(2)}</td><td>${delBtn}</td></tr>`;
+  }).join('');
 }
 
 function delInc(i){
@@ -3883,14 +4188,19 @@ function generateReport(){
   let prCGST=0, prSGST=0;
 
   // Sales — use base (excl GST) for P&L; compute GST separately
+  let totalDiscountGiven = 0; // total trade discount given on all bills
+  let totalBatav = 0;         // total batav (settlement write-off)
   sales.forEach(s=>{
     const base = s.base !== undefined ? s.base : (s.withGST!==false ? s.total/1.05 : s.total);
     totalSale += base;
+    totalDiscountGiven += (s.totalDiscount||0);
     if(s.withGST!==false){
       const c=base*0.025; const sg=c;
       outCGST+=c; outSGST+=sg;
     }
   });
+  // Batav from expense ledger (type='BATAV')
+  expense.forEach(e=>{ if(e.type==='BATAV') totalBatav+=e.amount; });
 
   // Purchases — separate opening stock from regular purchases
   let openingStockVal = 0;
@@ -3920,7 +4230,16 @@ function generateReport(){
   });
 
   income.forEach(i=>totalInc+=i.amount);
-  expense.forEach(e=>totalExp+=e.amount);
+  // Compute discount/batav received (from supplier) — these are already inside totalInc via income[]
+  let totalDiscountReceived = 0, totalBatavReceived = 0;
+  income.forEach(i=>{
+    if(i.type==='DISCOUNT_RECEIVED') totalDiscountReceived+=i.amount;
+    if(i.type==='BATAV_RECEIVED')    totalBatavReceived+=i.amount;
+  });
+  // Exclude BATAV and DISCOUNT_GIVEN from totalExp — they are already counted separately below
+  expense.forEach(e=>{
+    if(e.type!=='BATAV' && e.type!=='DISCOUNT_GIVEN') totalExp+=e.amount;
+  });
   const openingCash=parseFloat(localStorage.getItem(CU+'_opening_cash')||0);
   const openingBank=parseFloat(localStorage.getItem(CU+'_opening_bank')||0);
   cashBal=openingCash;
@@ -3935,7 +4254,7 @@ function generateReport(){
   // Gross Profit = Sales - (Opening Stock + Purchases - Closing Stock)
   const costOfGoods = openingStockVal + netPur - stockVal;
   const grossProfit = netSale - costOfGoods;
-  const netProfit   = grossProfit + totalInc - totalExp;
+  const netProfit   = grossProfit + totalInc - totalExp - totalDiscountGiven - totalBatav;
 
   // Capital — manual input field OR auto-calculated from ledger
   const manualCapital  = loadCapital();
@@ -3966,7 +4285,8 @@ function generateReport(){
     if(!bal[l.party]) bal[l.party]=0;
     if(['SALE','PURCHASE_RETURN','CASH_PAYMENT','BANK_PAYMENT','OPENING_RECEIVABLE'].includes(l.type))
       bal[l.party]+=l.amount;
-    else if(['PURCHASE','SALE_RETURN','CASH_RECEIPT','BANK_RECEIPT','OPENING_PAYABLE'].includes(l.type))
+    else if(['PURCHASE','SALE_RETURN','CASH_RECEIPT','BANK_RECEIPT','OPENING_PAYABLE',
+             'DISCOUNT_GIVEN','BATAV','DISCOUNT_RECEIVED','BATAV_RECEIVED'].includes(l.type))
       bal[l.party]-=l.amount;
     // Skip CAPITAL/DRAWING/OTHER_INCOME/OTHER_EXPENSE — these are internal
   });
@@ -4043,11 +4363,15 @@ function generateReport(){
     <div class="report-section">
       ${divider('📋 PROFIT & LOSS ACCOUNT')}
       ${subhead('Dr Side (Expenses)')}
-      ${row('Other Expenses', totalExp)}
+      ${totalDiscountGiven>0?row('Discount Given (Trade Discount)', totalDiscountGiven):''}
+      ${totalBatav>0?row('Batav / Settlement Write-off', totalBatav):''}
+      ${row('Other Expenses', totalExp-totalBatav>0?totalExp-totalBatav:totalExp)}
       ${netProfit>=0?'':row('NET LOSS', Math.abs(netProfit),'loss',true)}
       ${subhead('Cr Side (Income)')}
       ${row('Gross Profit b/d', grossProfit)}
-      ${row('Other Income', totalInc)}
+      ${totalDiscountReceived>0?row('Discount Received (from Suppliers)', totalDiscountReceived):''}
+      ${totalBatavReceived>0?row('Batav Received (from Suppliers)', totalBatavReceived):''}
+      ${row('Other Income', totalInc - totalDiscountReceived - totalBatavReceived > 0 ? totalInc - totalDiscountReceived - totalBatavReceived : 0)}
       ${netProfit>=0?row('NET PROFIT', netProfit,'profit',true):''}
     </div>
 
@@ -4144,33 +4468,151 @@ function loadOpeningBalance(){
 ================================*/
 function generateTrialBalance(){
   const ledger = load('ledger');
-  const acc = {};
+
+  // ── PROPER DOUBLE-ENTRY TRIAL BALANCE ──
+  // Every ledger entry has TWO sides. We map each type to its natural balance side
+  // per standard accounting:
+  //
+  //  TYPE              | NATURAL SIDE | ACCOUNT AFFECTED
+  //  ------------------|--------------|------------------
+  //  SALE              | Credit       | Sales A/c (income)        Dr: Debtor (party)
+  //  PURCHASE          | Debit        | Purchases A/c             Cr: Creditor (party)
+  //  CASH_RECEIPT      | Debit        | Cash/Bank A/c             Cr: Debtor (party) — settles SALE
+  //  BANK_RECEIPT      | Debit        | Cash/Bank A/c             Cr: Debtor
+  //  CASH_PAYMENT      | Credit       | Cash/Bank A/c             Dr: Creditor — settles PURCHASE
+  //  BANK_PAYMENT      | Credit       | Cash/Bank A/c             Dr: Creditor
+  //  SALE_RETURN       | Debit        | Sales Return A/c          Cr: Debtor (reversal)
+  //  PURCHASE_RETURN   | Credit       | Purchase Return A/c       Dr: Creditor
+  //  DISCOUNT_GIVEN    | Debit        | Discount Expense          Cr: Debtor
+  //  BATAV             | Debit        | Batav Expense             Cr: Debtor
+  //  CAPITAL/CAPITAL_* | Credit       | Capital A/c
+  //  DRAWING           | Debit        | Drawings A/c
+  //  OTHER_INCOME      | Credit       | Other Income
+  //  OTHER_EXPENSE     | Debit        | Other Expense
+  //  OPENING_RECEIVABLE| Debit        | Debtor (opening balance)
+  //  OPENING_PAYABLE   | Credit       | Creditor (opening balance)
+
+  // We build a named-account trial balance (not per-party ledger)
+  // Each entry hits TWO accounts — one debit, one credit — so total Dr = total Cr always.
+  // The balance we SHOW is the net of all entries per named account.
+
+  const TB = {}; // accountName -> {debit, credit}
+  function dr(acct, amt){ if(!TB[acct]) TB[acct]={debit:0,credit:0}; TB[acct].debit+=amt; }
+  function cr(acct, amt){ if(!TB[acct]) TB[acct]={debit:0,credit:0}; TB[acct].credit+=amt; }
+
   ledger.forEach(l=>{
-    if(!acc[l.party]) acc[l.party] = {debit:0, credit:0};
-    // Standard double-entry:
-    // Debit: PURCHASE (goods in), CASH_RECEIPT/BANK_RECEIPT (assets increase),
-    //        OPENING_RECEIVABLE (asset), SALE_RETURN (reverses sale), DRAWING
-    // Credit: SALE (income), CASH_PAYMENT/BANK_PAYMENT (assets decrease),
-    //         PURCHASE_RETURN (reverses purchase), OPENING_PAYABLE, CAPITAL types
-    const debitTypes=['PURCHASE','CASH_RECEIPT','BANK_RECEIPT','OPENING_RECEIVABLE','SALE_RETURN','DRAWING','OTHER_EXPENSE'];
-    if(debitTypes.includes(l.type)) acc[l.party].debit += l.amount;
-    else acc[l.party].credit += l.amount;
+    const p   = l.party;
+    const amt = l.amount;
+    switch(l.type){
+      case 'SALE':
+        dr(p, amt);           // Debtor A/c Dr (we are owed)
+        cr('Sales A/c', amt); // Sales Cr
+        break;
+      case 'PURCHASE':
+        dr('Purchases A/c', amt); // Purchases Dr
+        cr(p, amt);               // Creditor Cr (we owe them)
+        break;
+      case 'CASH_RECEIPT':
+        dr('Cash A/c', amt);  // Cash Dr (asset increases)
+        cr(p, amt);           // Debtor Cr (they paid us)
+        break;
+      case 'BANK_RECEIPT':
+        dr('Bank A/c', amt);  // Bank Dr
+        cr(p, amt);           // Debtor Cr
+        break;
+      case 'CASH_PAYMENT':
+        dr(p, amt);           // Creditor Dr (we paid them)
+        cr('Cash A/c', amt);  // Cash Cr
+        break;
+      case 'BANK_PAYMENT':
+        dr(p, amt);           // Creditor Dr
+        cr('Bank A/c', amt);  // Bank Cr
+        break;
+      case 'SALE_RETURN':
+        dr('Sales Return A/c', amt); // Sales Return Dr
+        cr(p, amt);                   // Debtor Cr (less owed)
+        break;
+      case 'PURCHASE_RETURN':
+        dr(p, amt);                      // Creditor Dr (less owed)
+        cr('Purchase Return A/c', amt);  // Purchase Return Cr
+        break;
+      case 'DISCOUNT_GIVEN':
+        dr('Discount Given A/c', amt); // Expense Dr
+        cr(p, amt);                    // Debtor Cr (reduce receivable)
+        break;
+      case 'BATAV':
+        dr('Batav Expense A/c', amt);  // Expense Dr
+        cr(p, amt);                    // Debtor Cr (write off balance)
+        break;
+      case 'DISCOUNT_RECEIVED':
+        dr(p, amt);                          // Creditor Dr (we owe them less)
+        cr('Discount Received A/c', amt);    // Income Cr
+        break;
+      case 'BATAV_RECEIVED':
+        dr(p, amt);                          // Creditor Dr (write off balance)
+        cr('Batav Received A/c', amt);       // Income Cr
+        break;
+      case 'CAPITAL':
+        dr('Cash A/c', amt);           // Cash Dr (owner brought cash)
+        cr('Capital A/c', amt);        // Capital Cr
+        break;
+      case 'CAPITAL_STOCK':
+        dr('Opening Stock A/c', amt);  // Asset Dr
+        cr('Capital A/c', amt);        // Capital Cr
+        break;
+      case 'CAPITAL_ASSET':
+        dr('Fixed Assets A/c', amt);   // Asset Dr
+        cr('Capital A/c', amt);        // Capital Cr
+        break;
+      case 'DRAWING':
+        dr('Drawings A/c', amt);       // Drawings Dr
+        cr('Cash A/c', amt);           // Cash Cr
+        break;
+      case 'OTHER_INCOME':
+        dr('Cash A/c', amt);           // Cash Dr (received income)
+        cr('Other Income A/c', amt);   // Income Cr
+        break;
+      case 'OTHER_EXPENSE':
+        dr('Other Expense A/c', amt);  // Expense Dr
+        cr('Cash A/c', amt);           // Cash Cr
+        break;
+      case 'OPENING_RECEIVABLE':
+        dr(p, amt);                    // Debtor Dr (opening balance)
+        cr('Opening Balance A/c', amt);
+        break;
+      case 'OPENING_PAYABLE':
+        dr('Opening Balance A/c', amt);
+        cr(p, amt);                    // Creditor Cr (opening balance)
+        break;
+      default:
+        // Any unrecognised type: put on credit side
+        cr(p+'('+l.type+')', amt);
+        dr('Suspense A/c', amt);
+    }
   });
+
   let totalDebit=0, totalCredit=0;
-  let html='<table><thead><tr><th>Account</th><th>Debit (₹)</th><th>Credit (₹)</th></tr></thead><tbody>';
-  Object.keys(acc).forEach(a=>{
-    totalDebit+=acc[a].debit;
-    totalCredit+=acc[a].credit;
+  let html='<div class="table-wrap"><table><thead><tr><th>Account</th><th>Debit (₹)</th><th>Credit (₹)</th></tr></thead><tbody>';
+
+  // Show accounts with a net balance only (net debit or net credit)
+  Object.keys(TB).sort().forEach(acct=>{
+    const net = TB[acct].debit - TB[acct].credit;
+    if(Math.abs(net) < 0.01) return; // fully settled account — skip
+    const dAmt = net > 0 ? net : 0;
+    const cAmt = net < 0 ? -net : 0;
+    totalDebit  += dAmt;
+    totalCredit += cAmt;
     html+=`<tr>
-      <td>${a}</td>
-      <td>${acc[a].debit>0?acc[a].debit.toFixed(2):'-'}</td>
-      <td>${acc[a].credit>0?acc[a].credit.toFixed(2):'-'}</td>
+      <td>${acct}</td>
+      <td>${dAmt>0 ? '₹'+dAmt.toFixed(2) : '-'}</td>
+      <td>${cAmt>0 ? '₹'+cAmt.toFixed(2) : '-'}</td>
     </tr>`;
   });
-  const balanced=Math.abs(totalDebit-totalCredit)<0.05;
+
+  const balanced = Math.abs(totalDebit-totalCredit) < 0.05;
   html+=`</tbody><tfoot><tr style="font-weight:bold;border-top:2px solid var(--blue)">
     <td>TOTAL</td><td>₹${totalDebit.toFixed(2)}</td><td>₹${totalCredit.toFixed(2)}</td>
-  </tr></tfoot></table>`;
+  </tr></tfoot></table></div>`;
   html+=`<div class="alert ${balanced?'alert-success':'alert-danger'}" style="margin-top:8px">
     ${balanced?'✅ Trial Balance tallies!':'⚠️ Does not tally — difference: ₹'+Math.abs(totalDebit-totalCredit).toFixed(2)}
   </div>`;
@@ -4338,7 +4780,7 @@ function openCapitalSetup(){
       <select id="conv_mode"><option>CASH</option><option>BANK</option><option>CREDIT</option></select>
     </div>
     <hr style="margin:10px 0">
-    <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Enter qty to convert (max = remaining):</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Enter qty &amp; discount to convert (max = remaining):</p>
     <div id="convItemsList"></div>
     <button class="btn btn-green btn-full" style="margin-top:10px" onclick="saveConvert()">Convert to Sale Bill</button>
   </div>
@@ -4642,14 +5084,23 @@ function openConvertModal(){
   if(pending.length===0){alert('No pending items to convert');return;}
 
   document.getElementById('convItemsList').innerHTML=pending.map(it=>`
-    <div class="item-row" style="flex-wrap:wrap;gap:6px">
-      <div style="flex:1">
+    <div class="item-row" style="flex-wrap:wrap;gap:6px;align-items:center">
+      <div style="flex:1;min-width:100px">
         <div class="item-name">${it.name}</div>
-        <div class="item-detail">Remaining: ${it.qtyRemaining} | Price: ₹${it.price}</div>
+        <div class="item-detail">Remaining: ${it.qtyRemaining} | Rate: ₹${it.price}</div>
       </div>
-      <input type="number" id="conv_${it.name.replace(/\s/g,'_')}"
-        value="${it.qtyRemaining}" max="${it.qtyRemaining}" min="0"
-        style="width:70px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+        <span style="font-size:10px;color:var(--muted);font-weight:600">QTY</span>
+        <input type="number" id="conv_qty_${it.name.replace(/\s/g,'_')}"
+          value="${it.qtyRemaining}" max="${it.qtyRemaining}" min="0"
+          style="width:65px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center">
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+        <span style="font-size:10px;color:#e74c3c;font-weight:600">DISC%</span>
+        <input type="number" id="conv_disc_${it.name.replace(/\s/g,'_')}"
+          value="0" min="0" max="100" placeholder="0"
+          style="width:60px;padding:6px;border:1px solid #e74c3c33;border-radius:6px;font-size:13px;text-align:center">
+      </div>
     </div>`).join('');
   openModal('convertModal');
 }
@@ -4665,41 +5116,60 @@ function saveConvert(){
 
   const sales=load('sales');
   const bno=(sales.length?Math.max(...sales.map(s=>s.billNo)):0)+1;
-  let grand=0;
+  let grand=0, grossBeforeDisc=0, totalDiscount=0;
   let saleItems=[];
   let anyConverted=false;
 
   pending.forEach(it=>{
-    const key='conv_'+it.name.replace(/\s/g,'_');
-    const inp=document.getElementById(key);
-    const cq=parseInt(inp?inp.value:0)||0;
-    if(cq<=0)return;
-    if(cq>it.qtyRemaining){alert('Qty for '+it.name+' exceeds remaining '+it.qtyRemaining);return;}
+    const safeKey = it.name.replace(/\s/g,'_');
+    const qtyInp  = document.getElementById('conv_qty_'+safeKey);
+    const discInp = document.getElementById('conv_disc_'+safeKey);
+    const cq   = parseInt(qtyInp?qtyInp.value:0)||0;
+    const disc = parseFloat(discInp?discInp.value:0)||0;
+    if(cq<=0) return;
+    if(cq>it.qtyRemaining){ alert('Qty for '+it.name+' exceeds remaining '+it.qtyRemaining); return; }
     anyConverted=true;
-    const amt=cq*it.price;
-    grand+=amt;
-    const itemGst=(j.gstType==='without_gst')?0:5;
-    saleItems.push({name:it.name,qty:cq,price:it.price,gst:itemGst,amount:amt});
-    // update jangad item
-    it.qtyRemaining-=cq;
-    it.status=it.qtyRemaining===0?'CONVERTED':'PARTIAL';
+    const gross   = cq * it.price;
+    const discAmt = parseFloat((gross * disc / 100).toFixed(2));
+    const amt     = parseFloat((gross - discAmt).toFixed(2));
+    grossBeforeDisc += gross;
+    totalDiscount   += discAmt;
+    grand           += amt;
+    const itemGst = (j.gstType==='without_gst') ? 0 : 5;
+    saleItems.push({name:it.name, qty:cq, price:it.price, disc, discAmt, gst:itemGst, amount:amt});
+    it.qtyRemaining -= cq;
+    it.status = it.qtyRemaining===0 ? 'CONVERTED' : 'PARTIAL';
   });
 
-  if(!anyConverted){alert('Enter at least one qty to convert');return;}
+  if(!anyConverted){ alert('Enter at least one qty to convert'); return; }
 
-  // update jangad status
-  const allDone=j.items.every(it=>it.qtyRemaining===0);
-  j.status=allDone?'CONVERTED':'PENDING';
+  const allDone = j.items.every(it=>it.qtyRemaining===0);
+  j.status = allDone ? 'CONVERTED' : 'PENDING';
   save('jangads',jangads);
 
-  // save sale bill — respect jangad's gst type
-  const withGST=(j.gstType!=='without_gst');
-  const cgst=withGST?grand*0.025:0,sgst=withGST?grand*0.025:0,net=Math.round(grand+cgst+sgst);
-  // store jangad date only (no jangad number) for bill reference
-  const jangadDates=[{date:j.date}];
-  sales.push({billNo:bno,party:j.party,date,mode,base:grand,total:net,withGST:withGST,items:saleItems,jangadDates});
+  const withGST = (j.gstType!=='without_gst');
+  const cgst = withGST?grand*0.025:0, sgst=withGST?grand*0.025:0;
+  const net  = Math.round(grand+cgst+sgst);
+  const totalDiscountRounded = parseFloat(totalDiscount.toFixed(2));
+  const jangadDates = [{date:j.date}];
+
+  sales.push({
+    billNo:bno, party:j.party, date, mode,
+    base:grand, cgst, sgst, total:net, withGST,
+    totalDiscount:totalDiscountRounded, grossBeforeDisc,
+    items:saleItems, jangadDates
+  });
   save('sales',sales);
-  addLedger(date,j.party,'SALE',String(bno),net);
+
+  const grossForLedgerJ = totalDiscountRounded > 0 ? Math.round(grossBeforeDisc*(withGST?1.05:1)) : net;
+  addLedger(date,j.party,'SALE',String(bno),grossForLedgerJ);
+  if(totalDiscountRounded>0){
+    const discForLedgerJ = parseFloat((grossForLedgerJ - net).toFixed(2));
+    addLedger(date,j.party,'DISCOUNT_GIVEN','Bill#'+bno,discForLedgerJ);
+    const expD=load('expense');
+    expD.push({date,desc:'Discount Given on Bill#'+bno+' Party:'+j.party,amount:discForLedgerJ,type:'DISCOUNT_GIVEN'});
+    save('expense',expD);
+  }
   if(mode==='CASH'){
     const cash=load('cash');
     cash.push({date,type:'RECEIPT',party:j.party,desc:'Sale Bill#'+bno+' (Jangad#'+selectedJangadNo+')',amount:net});
@@ -4715,7 +5185,7 @@ function saveConvert(){
   closeModal('convertModal');
   selectJangad(selectedJangadNo);
   renderJangad();
-  if(confirm('Sale Bill #'+bno+' created from Jangad #'+selectedJangadNo+'!\n\nOpen bill for print / PDF?')){
+  if(confirm('Sale Bill #'+bno+' created from Jangad #'+selectedJangadNo+'!'+(totalDiscountRounded>0?' | Discount: ₹'+totalDiscountRounded.toFixed(2):'')+'\n\nOpen bill for print / PDF?')){
     printBillByNo(bno);
   }
 }
@@ -5047,7 +5517,7 @@ ${getMyTagline()?`<div style="text-align:center;font-size:10px;font-weight:bold"
       <select id="dc_conv_gst"><option value="with_gst">With GST (CGST+SGST 2.5%)</option><option value="without_gst">Without GST</option></select>
     </div>
     <hr style="margin:10px 0">
-    <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Enter qty to bill (max = remaining):</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Enter qty &amp; discount to bill (max = remaining):</p>
     <div id="dc_conv_items"></div>
     <button class="btn btn-green btn-full" style="margin-top:10px" onclick="saveDCConvert()">✅ Create Sale Bill</button>
   </div>
@@ -5349,12 +5819,21 @@ function openDCConvertModal(){
   document.getElementById('dc_convert_info').innerHTML=
     `DC #${d.dcNo} | Party: <b>${d.party}</b> | Date: ${d.date}${d.linkedJangads&&d.linkedJangads.length?' | Jangads: '+d.linkedJangads.map(n=>'#'+n).join(', '):''}`;
   document.getElementById('dc_conv_items').innerHTML=pending.map(it=>`
-    <div class="item-row" style="flex-wrap:wrap;gap:6px">
-      <div style="flex:1"><div class="item-name">${it.name}</div>
+    <div class="item-row" style="flex-wrap:wrap;gap:6px;align-items:center">
+      <div style="flex:1;min-width:100px"><div class="item-name">${it.name}</div>
       <div class="item-detail">Remaining: ${it.qtyRemaining} | Rate: ₹${it.price}</div></div>
-      <input type="number" id="dcc_${it.name.replace(/\s/g,'_')}"
-        value="${it.qtyRemaining}" max="${it.qtyRemaining}" min="0"
-        style="width:70px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+        <span style="font-size:10px;color:var(--muted);font-weight:600">QTY</span>
+        <input type="number" id="dcc_qty_${it.name.replace(/\s/g,'_')}"
+          value="${it.qtyRemaining}" max="${it.qtyRemaining}" min="0"
+          style="width:65px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center">
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+        <span style="font-size:10px;color:#e74c3c;font-weight:600">DISC%</span>
+        <input type="number" id="dcc_disc_${it.name.replace(/\s/g,'_')}"
+          value="0" min="0" max="100" placeholder="0"
+          style="width:60px;padding:6px;border:1px solid #e74c3c33;border-radius:6px;font-size:13px;text-align:center">
+      </div>
     </div>`).join('');
   openModal('dcConvertModal');
 }
@@ -5369,22 +5848,33 @@ function saveDCConvert(){
   const pending=d.items.filter(it=>it.qtyRemaining>0);
   const sales=load('sales');
   const bno=(sales.length?Math.max(...sales.map(s=>s.billNo)):0)+1;
-  let grand=0, saleItems=[], anyConverted=false;
+  let grand=0, grossBeforeDisc=0, totalDiscount=0;
+  let saleItems=[], anyConverted=false;
+
   pending.forEach(it=>{
-    const inp=document.getElementById('dcc_'+it.name.replace(/\s/g,'_'));
-    const cq=parseInt(inp?inp.value:0)||0;
+    const safeKey = it.name.replace(/\s/g,'_');
+    const qtyInp  = document.getElementById('dcc_qty_'+safeKey);
+    const discInp = document.getElementById('dcc_disc_'+safeKey);
+    const cq   = parseInt(qtyInp?qtyInp.value:0)||0;
+    const disc = parseFloat(discInp?discInp.value:0)||0;
     if(cq<=0) return;
-    if(cq>it.qtyRemaining){alert('Qty for '+it.name+' exceeds remaining');return;}
+    if(cq>it.qtyRemaining){ alert('Qty for '+it.name+' exceeds remaining'); return; }
     anyConverted=true;
-    const amt=cq*it.price;
-    grand+=amt;
-    saleItems.push({name:it.name,qty:cq,price:it.price,gst:5,amount:amt});
-    it.qtyRemaining-=cq;
-    it.status=it.qtyRemaining===0?'CONVERTED':'PARTIAL';
+    const gross   = cq * it.price;
+    const discAmt = parseFloat((gross * disc / 100).toFixed(2));
+    const amt     = parseFloat((gross - discAmt).toFixed(2));
+    grossBeforeDisc += gross;
+    totalDiscount   += discAmt;
+    grand           += amt;
+    saleItems.push({name:it.name, qty:cq, price:it.price, disc, discAmt, gst:5, amount:amt});
+    it.qtyRemaining -= cq;
+    it.status = it.qtyRemaining===0 ? 'CONVERTED' : 'PARTIAL';
   });
-  if(!anyConverted){alert('Enter at least one qty');return;}
-  d.status=d.items.every(it=>it.qtyRemaining===0)?'CONVERTED':'PENDING';
+
+  if(!anyConverted){ alert('Enter at least one qty'); return; }
+  d.status = d.items.every(it=>it.qtyRemaining===0) ? 'CONVERTED' : 'PENDING';
   save('dcs',dcs);
+
   if(d.linkedJangads&&d.linkedJangads.length){
     const jangads=load('jangads');
     d.linkedJangads.forEach(jno=>{
@@ -5393,7 +5883,10 @@ function saveDCConvert(){
     });
     save('jangads',jangads);
   }
-  const cgst=withGST?grand*0.025:0, sgst=cgst, net=Math.round(grand+cgst+sgst);
+
+  const cgst=withGST?grand*0.025:0, sgst=cgst;
+  const net=Math.round(grand+cgst+sgst);
+  const totalDiscountRounded=parseFloat(totalDiscount.toFixed(2));
   const dcDates=[{dcNo:d.dcNo,date:d.date}];
   const jangadDates=[];
   if(d.linkedJangads&&d.linkedJangads.length){
@@ -5403,15 +5896,40 @@ function saveDCConvert(){
       if(j) jangadDates.push({jangadNo:jno,date:j.date});
     });
   }
-  sales.push({billNo:bno,party:d.party,date,mode,base:grand,total:net,withGST,items:saleItems,dcDates,jangadDates});
+
+  sales.push({
+    billNo:bno, party:d.party, date, mode,
+    base:grand, cgst, sgst, total:net, withGST,
+    totalDiscount:totalDiscountRounded, grossBeforeDisc,
+    items:saleItems, dcDates, jangadDates
+  });
   save('sales',sales);
-  addLedger(date,d.party,'SALE',String(bno),net);
-  if(mode==='CASH'){const cash=load('cash');cash.push({date,type:'RECEIPT',party:d.party,desc:'Sale Bill#'+bno+' (DC#'+selectedDCNo+')',amount:net});save('cash',cash);addLedger(date,d.party,'CASH_RECEIPT','Sale Bill#'+bno,net);}
-  else if(mode==='BANK'){const bank=load('bank');bank.push({date,type:'RECEIPT',party:d.party,mode:'NEFT',desc:'Sale Bill#'+bno+' (DC#'+selectedDCNo+')',amount:net});save('bank',bank);addLedger(date,d.party,'BANK_RECEIPT','Sale Bill#'+bno,net);}
+
+  const grossForLedgerD = totalDiscountRounded > 0 ? Math.round(grossBeforeDisc*(withGST?1.05:1)) : net;
+  addLedger(date,d.party,'SALE',String(bno),grossForLedgerD);
+  if(totalDiscountRounded>0){
+    const discForLedgerD = parseFloat((grossForLedgerD - net).toFixed(2));
+    addLedger(date,d.party,'DISCOUNT_GIVEN','Bill#'+bno,discForLedgerD);
+    const expD=load('expense');
+    expD.push({date,desc:'Discount Given on Bill#'+bno+' Party:'+d.party,amount:discForLedgerD,type:'DISCOUNT_GIVEN'});
+    save('expense',expD);
+  }
+  if(mode==='CASH'){
+    const cash=load('cash');
+    cash.push({date,type:'RECEIPT',party:d.party,desc:'Sale Bill#'+bno+' (DC#'+selectedDCNo+')',amount:net});
+    save('cash',cash);
+    addLedger(date,d.party,'CASH_RECEIPT','Sale Bill#'+bno,net);
+  } else if(mode==='BANK'){
+    const bank=load('bank');
+    bank.push({date,type:'RECEIPT',party:d.party,mode:'NEFT',desc:'Sale Bill#'+bno+' (DC#'+selectedDCNo+')',amount:net});
+    save('bank',bank);
+    addLedger(date,d.party,'BANK_RECEIPT','Sale Bill#'+bno,net);
+  }
+
   closeModal('dcConvertModal');
   selectDC(selectedDCNo);
   renderDC();
-  if(confirm('Sale Bill #'+bno+' created from DC #'+selectedDCNo+'!\n\nOpen bill for print / PDF?')){ printBillByNo(bno); }
+  if(confirm('Sale Bill #'+bno+' created from DC #'+selectedDCNo+'!'+(totalDiscountRounded>0?' | Discount: ₹'+totalDiscountRounded.toFixed(2):'')+'\n\nOpen bill for print / PDF?')){ printBillByNo(bno); }
 }
 
 function openDCReturnModal(){
@@ -6146,7 +6664,7 @@ function shareBillPDF(bno){
   const myState  = localStorage.getItem(CU+'_gst_state') || 'Gujarat';
   const mySC     = getMyStateCode();
   const bankDets = getMyBankDetails();
-  const company  = CU.replace(/_/g,' ');
+  const company  = getMyCompanyName();
 
   const base    = bill.base !== undefined ? bill.base : bill.total;
   const withGST = (bill.withGST !== false);
@@ -6302,7 +6820,7 @@ function shareDCPDF(dcno){
   if(!d){ alert('DC not found'); return; }
   const parties = load('parties');
   const party = parties.find(p => p.name === d.party) || {name:d.party,addr:'',mob:''};
-  const company = CU.replace(/_/g,' ');
+  const company = getMyCompanyName();
 
   let itemRows = '', totalQty = 0, totalAmt = 0;
   d.items.forEach((it, i) => {
@@ -6397,7 +6915,7 @@ function shareLedgerPDF(){
   }).join('');
 
   const bal = debit - credit;
-  const company = CU.replace(/_/g,' ');
+  const company = getMyCompanyName();
 
   const html = `
     <div style="font-family:Arial,sans-serif;font-size:11px;max-width:190mm">
@@ -6443,7 +6961,7 @@ function shareLedgerWhatsApp(){
 
   const parties = load('parties');
   const partyObj = parties.find(p => p.name === party) || {mob:''};
-  const company = CU.replace(/_/g,' ');
+  const company = getMyCompanyName();
 
   let debit = 0, credit = 0;
   let lines = ledger.map(l => {
@@ -6477,10 +6995,11 @@ function shareOutstandingWhatsApp(){
   ledger.forEach(l => {
     if(!bal[l.party]) bal[l.party] = 0;
     if(['SALE','PURCHASE_RETURN','CASH_PAYMENT','BANK_PAYMENT','OPENING_RECEIVABLE'].includes(l.type)) bal[l.party] += l.amount;
-    else if(['PURCHASE','CASH_RECEIPT','BANK_RECEIPT','OPENING_PAYABLE','SALE_RETURN'].includes(l.type)) bal[l.party] -= l.amount;
+    else if(['PURCHASE','CASH_RECEIPT','BANK_RECEIPT','OPENING_PAYABLE','SALE_RETURN',
+             'DISCOUNT_GIVEN','BATAV','DISCOUNT_RECEIVED','BATAV_RECEIVED'].includes(l.type)) bal[l.party] -= l.amount;
   });
 
-  const company = CU.replace(/_/g,' ');
+  const company = getMyCompanyName();
   let debtorLines = '', creditorLines = '', totD = 0, totC = 0;
 
   Object.keys(bal).forEach(p => {
@@ -7322,7 +7841,7 @@ function printEwayForm(bno){
   const cgst     = isInter?0:taxVal*gstRate/2;
   const sgst     = cgst;
   const igst     = isInter?taxVal*gstRate:0;
-  const company  = CU.replace(/_/g,' ');
+  const company  = getMyCompanyName();
   const myGSTIN  = getMyGSTIN();
   const supState = localStorage.getItem(CU+'_gst_state')||'Gujarat';
   const supSC    = getMyStateCode();
@@ -7475,7 +7994,8 @@ function printBillByNo(bno){
   const myState  = localStorage.getItem(CU+'_gst_state')||'Gujarat';
   const mySC     = getMyStateCode();
   const bankDets = getMyBankDetails();
-  const company  = CU.replace(/_/g,' ');
+  // ✅ FIX: Use getMyCompanyName() — was CU.replace(/_/g,' ') showing "FIRM 2" instead of actual firm name
+  const company  = getMyCompanyName();
 
   const base     = bill.base!==undefined?bill.base:bill.total;
   const withGST  = (bill.withGST!==false);
@@ -7517,6 +8037,7 @@ function printBillByNo(bno){
 
   // Item rows with HSN
   let itemRows='', totalQty=0;
+  const hasDiscount = bill.items.some(it=>it.disc>0);
   bill.items.forEach((it,i)=>{
     totalQty+=it.qty;
     const pObj = prods.find(p=>p.name===it.name)||{};
@@ -7526,6 +8047,7 @@ function printBillByNo(bno){
       <td style="border:1px solid #000;padding:4px"><b>${it.name}</b><br><small style="color:#777">HSN: ${hsn}</small></td>
       <td style="text-align:right;border:1px solid #000;padding:4px">${it.qty} ${it.unit||'Pcs'}</td>
       <td style="text-align:right;border:1px solid #000;padding:4px">₹${it.price.toFixed(2)}</td>
+      ${hasDiscount?`<td style="text-align:center;border:1px solid #000;padding:4px">${it.disc>0?it.disc+'%':'-'}</td>`:''}
       <td style="text-align:center;border:1px solid #000;padding:4px">${gstRate*100}%</td>
       <td style="text-align:right;border:1px solid #000;padding:4px">₹${it.amount.toFixed(2)}</td>
     </tr>`;
@@ -7597,7 +8119,7 @@ ${myGSTIN?`<div style="text-align:center;font-size:10px;font-weight:bold">GSTIN:
     <b>Challan No.:</b> ${bill.dcDates&&bill.dcDates.length?bill.dcDates.map(d=>'DC#'+d.dcNo).join(', '):bno}<br>
     <b>Challan Date:</b> ${bill.dcDates&&bill.dcDates.length?bill.dcDates.map(d=>d.date).join(', '):bill.date}<br>
     <b>Payment:</b> ${bill.mode}
-    ${bill.dueDate?'<br><b>Due Date:</b> '+bill.dueDate:''}
+    ${bill.dueDate?`<br><span style="background:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:2px 6px;font-weight:bold;color:#856404">📅 Due Date: ${bill.dueDate}</span>`:''}
   </td>
 </tr></table>
 
@@ -7607,6 +8129,7 @@ ${myGSTIN?`<div style="text-align:center;font-size:10px;font-weight:bold">GSTIN:
   <th style="border:1px solid #000;padding:4px">Description / HSN</th>
   <th style="border:1px solid #000;padding:4px;width:60px">Qty</th>
   <th style="border:1px solid #000;padding:4px;width:60px">Rate</th>
+  ${hasDiscount?'<th style="border:1px solid #000;padding:4px;width:40px">Disc%</th>':''}
   <th style="border:1px solid #000;padding:4px;width:40px">GST%</th>
   <th style="border:1px solid #000;padding:4px;width:70px">Amount</th>
 </tr></thead>
@@ -7630,13 +8153,16 @@ ${myGSTIN?`<div style="text-align:center;font-size:10px;font-weight:bold">GSTIN:
   </td>
   <td style="width:50%;padding:5px;vertical-align:top">
     <table style="width:100%">
+      ${bill.totalDiscount>0?`<tr><td>Gross Amount</td><td style="text-align:right">₹${(bill.grossBeforeDisc||base+bill.totalDiscount).toFixed(2)}</td></tr>`:''}
+      ${bill.totalDiscount>0?`<tr><td style="color:#c0392b">Trade Discount</td><td style="text-align:right;color:#c0392b">- ₹${bill.totalDiscount.toFixed(2)}</td></tr>`:''}
       <tr><td>Taxable Amount</td><td style="text-align:right">₹${base.toFixed(2)}</td></tr>
       ${taxRows}
       ${roff!==0?`<tr><td>Rounding Off</td><td style="text-align:right">${roff>0?'+':''} ₹${roff}</td></tr>`:''}
       <tr><td>Total Tax</td><td style="text-align:right">₹${(cgst+sgst+igst).toFixed(2)}</td></tr>
+      ${bill.batavAmt>0?`<tr><td style="color:#8e44ad">Batav (Settlement)</td><td style="text-align:right;color:#8e44ad">- ₹${bill.batavAmt.toFixed(2)}</td></tr>`:''}
       <tr style="border-top:2px solid #000">
         <td><b>NET AMOUNT</b></td>
-        <td style="text-align:right;font-size:14px"><b>₹${net.toFixed(2)}</b></td>
+        <td style="text-align:right;font-size:14px"><b>₹${(bill.paidAmt||net).toFixed(2)}</b></td>
       </tr>
     </table>
   </td>
@@ -8135,6 +8661,12 @@ const DE_RULES = {
   // Other
   'OTHER_INCOME':    ['CASH',    'OTHER_INCOME'],
   'OTHER_EXPENSE':   ['OTHER_EXP','CASH'],
+  // Discount given on sale (reduces Sales revenue → goes to P&L expense side)
+  // Dr: DISCOUNT_GIVEN A/c (Indirect Expense) / Cr: Party (reduces receivable)
+  'DISCOUNT_GIVEN':  ['DISCOUNT_GIVEN', 'DEBTOR'],
+  // Batav — amount written off when customer pays less than bill amount
+  // Dr: BATAV A/c (Indirect Expense) / Cr: Party (clears remaining balance)
+  'BATAV':           ['BATAV_EXPENSE',  'DEBTOR'],
 };
 
 // Add a double-entry transaction
@@ -9953,5 +10485,105 @@ function deleteMyCat(index){
   _renderCatModalContent(); // refresh chips without closing modal
 }
 </script>
+
+<!-- ═══ PURCHASE SETTLEMENT (BATAV/DISCOUNT RECEIVED) MODAL ═══ -->
+<div id="purSettleModal" class="modal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal('purSettleModal')">×</button>
+    <h3>🧾 Settle Purchase Bill</h3>
+
+    <div style="background:#f0fff4;border-radius:12px;padding:12px;margin-bottom:12px">
+      <div style="font-size:13px;margin-bottom:4px">
+        <b>Bill:</b> <span id="ps_bill_no"></span> &nbsp;|&nbsp;
+        <b>Supplier:</b> <span id="ps_party"></span>
+      </div>
+      <div style="font-size:15px;font-weight:700;color:var(--red)">
+        Bill Amount: <span id="ps_bill_amt"></span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>📅 Payment Date</label>
+      <input type="text" id="ps_date" placeholder="DD-MM-YYYY">
+    </div>
+    <div class="form-group">
+      <label>💳 Payment Mode</label>
+      <select id="ps_mode" style="width:100%;padding:10px 12px;border:1.5px solid var(--md-outline,#e0e4ed);border-radius:12px;font-size:14px;font-family:var(--font-ui)">
+        <option value="CASH">CASH</option>
+        <option value="BANK">BANK (NEFT/UPI/Cheque)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>✅ Amount Paid to Supplier (₹)</label>
+      <input type="number" id="ps_paid" oninput="calcPurSettle()"
+        style="width:100%;padding:10px 12px;border:1.5px solid var(--md-outline,#e0e4ed);border-radius:12px;font-size:18px;font-weight:700;font-family:var(--font-ui)">
+    </div>
+
+    <div style="background:var(--md-surface-variant,#f5f6fa);border-radius:12px;padding:10px;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+      <div style="flex:1;font-size:13px;color:var(--muted)">🎁 Batav/Discount received from supplier:</div>
+      <div style="font-size:18px;font-weight:700;color:#27ae60">₹ <span id="ps_batav_amt">0</span></div>
+    </div>
+    <small style="color:var(--muted);font-size:11px;display:block;margin-bottom:4px">
+      If supplier accepts less than bill amount, the difference is your income.<br>
+      (Discount Received / Batav Received = Income in P&L)
+    </small>
+
+    <div id="ps_summary"></div>
+
+    <button class="btn btn-green btn-full" onclick="savePurSettlePayment()" style="margin-top:12px">
+      💾 Save Payment
+    </button>
+  </div>
+</div>
+
+<!-- ═══ BATAV / PAYMENT SETTLEMENT MODAL ═══ -->
+<div id="batavModal" class="modal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal('batavModal')">×</button>
+    <h3>💰 Record Payment</h3>
+
+    <div style="background:var(--md-primary-container,#fff3e0);border-radius:12px;padding:12px;margin-bottom:12px">
+      <div style="font-size:13px;margin-bottom:4px">
+        <b>Bill:</b> <span id="batav_bill_no"></span> &nbsp;|&nbsp;
+        <b>Party:</b> <span id="batav_party"></span>
+      </div>
+      <div style="font-size:15px;font-weight:700;color:var(--green)">
+        Bill Amount: <span id="batav_bill_amt"></span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>📅 Payment Date</label>
+      <input type="text" id="batav_date" placeholder="DD-MM-YYYY">
+    </div>
+    <div class="form-group">
+      <label>💳 Payment Mode</label>
+      <select id="batav_mode" style="width:100%;padding:10px 12px;border:1.5px solid var(--md-outline,#e0e4ed);border-radius:12px;font-size:14px;font-family:var(--font-ui)">
+        <option value="CASH">CASH</option>
+        <option value="BANK">BANK (NEFT/UPI/Cheque)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>✅ Amount Received (₹)</label>
+      <input type="number" id="batav_received" oninput="calcBatav()"
+        style="width:100%;padding:10px 12px;border:1.5px solid var(--md-outline,#e0e4ed);border-radius:12px;font-size:18px;font-weight:700;font-family:var(--font-ui)">
+    </div>
+
+    <div style="background:var(--md-surface-variant,#f5f6fa);border-radius:12px;padding:10px;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+      <div style="flex:1;font-size:13px;color:var(--muted)">🔖 Batav (বট্টা) amount:</div>
+      <div style="font-size:18px;font-weight:700;color:#8e44ad">₹ <span id="batav_amt">0</span></div>
+    </div>
+    <small style="color:var(--muted);font-size:11px;display:block;margin-bottom:4px">
+      Batav = Bill Amount − Amount Received. It is written off as an expense in P&L.<br>
+      (Gujarati: બટાવ | Hindi: बट्टा | English: Settlement Discount / Write-off)
+    </small>
+
+    <div id="batav_summary"></div>
+
+    <button class="btn btn-green btn-full" onclick="saveBatavPayment()" style="margin-top:12px">
+      💾 Save Payment
+    </button>
+  </div>
+</div>
 </body>
 </html>
