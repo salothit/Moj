@@ -2967,20 +2967,12 @@ function saveSale(){
   });
   saveShared('products',products);
 
-  // Ledger: SALE entry creates receivable (debtor) — GROSS amount (before discount) + GST
-  // This ensures DISCOUNT_GIVEN properly reduces receivable to the net billed amount
-  const grossForLedger = totalDiscount > 0 ? Math.round(grossBeforeDisc*(1+g.rate)) : net;
-  addLedger(date,party,'SALE',String(bno),grossForLedger);
-  // If discount given → record discount expense in ledger AND expense table
-  if(totalDiscount>0){
-    // Discount in ledger = difference between gross ledger and net (includes GST proportioning)
-    const discForLedger = parseFloat((grossForLedger - net).toFixed(2));
-    addLedger(date,party,'DISCOUNT_GIVEN','Bill#'+bno,discForLedger);
-    // Also save to expense store so it appears in P&L
-    const expD=load('expense');
-    expD.push({date,desc:'Discount Given on Bill#'+bno+' Party:'+party,amount:discForLedger,type:'DISCOUNT_GIVEN'});
-    save('expense',expD);
-  }
+  // Ledger: SALE entry — use NET amount (post discount + GST)
+  // Trade discount is already reflected in the net bill amount.
+  // For party ledger: we record net so party owes exactly what's on the bill.
+  addLedger(date,party,'SALE',String(bno),net);
+  // NOTE: We do NOT add DISCOUNT_GIVEN to expense store — the discount is
+  // already captured in the lower sale base. Adding it to expense = double counting.
 
   if(mode==='CASH'){
     const cash=load('cash');
@@ -4237,6 +4229,8 @@ function generateReport(){
     if(i.type==='BATAV_RECEIVED')    totalBatavReceived+=i.amount;
   });
   // Exclude BATAV and DISCOUNT_GIVEN from totalExp — they are already counted separately below
+  // Note: DISCOUNT_GIVEN excluded from expenses (trade discount = already in net sale)
+  // BATAV excluded separately (shown as its own line in P&L)
   expense.forEach(e=>{
     if(e.type!=='BATAV' && e.type!=='DISCOUNT_GIVEN') totalExp+=e.amount;
   });
@@ -4254,7 +4248,10 @@ function generateReport(){
   // Gross Profit = Sales - (Opening Stock + Purchases - Closing Stock)
   const costOfGoods = openingStockVal + netPur - stockVal;
   const grossProfit = netSale - costOfGoods;
-  const netProfit   = grossProfit + totalInc - totalExp - totalDiscountGiven - totalBatav;
+  const netProfit   = grossProfit + totalInc - totalExp - totalBatav;
+  // NOTE: Trade discount (totalDiscountGiven) is NOT subtracted here —
+  // it is already captured in the lower sale base amount (s.base = post-discount).
+  // Subtracting it again would be double-counting → Balance Sheet would fail.
 
   // Capital — manual input field OR auto-calculated from ledger
   const manualCapital  = loadCapital();
@@ -4363,10 +4360,13 @@ function generateReport(){
     <div class="report-section">
       ${divider('📋 PROFIT & LOSS ACCOUNT')}
       ${subhead('Dr Side (Expenses)')}
-      ${totalDiscountGiven>0?row('Discount Given (Trade Discount)', totalDiscountGiven):''}
       ${totalBatav>0?row('Batav / Settlement Write-off', totalBatav):''}
       ${row('Other Expenses', totalExp-totalBatav>0?totalExp-totalBatav:totalExp)}
       ${netProfit>=0?'':row('NET LOSS', Math.abs(netProfit),'loss',true)}
+      ${totalDiscountGiven>0?`<div style="background:#f8f9fa;border-left:3px solid #6c757d;padding:6px 10px;font-size:11px;color:#6c757d;margin:4px 0;border-radius:0 4px 4px 0">
+        ℹ️ <b>Trade Discount Memo:</b> ₹${totalDiscountGiven.toFixed(2)} discount was given on bills.<br>
+        This is already included in the lower Net Sales figure (₹${netSale.toFixed(2)}) — not a separate P&L expense.
+      </div>`:''}
       ${subhead('Cr Side (Income)')}
       ${row('Gross Profit b/d', grossProfit)}
       ${totalDiscountReceived>0?row('Discount Received (from Suppliers)', totalDiscountReceived):''}
@@ -5165,10 +5165,7 @@ function saveConvert(){
   addLedger(date,j.party,'SALE',String(bno),grossForLedgerJ);
   if(totalDiscountRounded>0){
     const discForLedgerJ = parseFloat((grossForLedgerJ - net).toFixed(2));
-    addLedger(date,j.party,'DISCOUNT_GIVEN','Bill#'+bno,discForLedgerJ);
-    const expD=load('expense');
-    expD.push({date,desc:'Discount Given on Bill#'+bno+' Party:'+j.party,amount:discForLedgerJ,type:'DISCOUNT_GIVEN'});
-    save('expense',expD);
+    // DISCOUNT_GIVEN removed from expense store (already in lower sale base - no double counting)
   }
   if(mode==='CASH'){
     const cash=load('cash');
@@ -5909,10 +5906,7 @@ function saveDCConvert(){
   addLedger(date,d.party,'SALE',String(bno),grossForLedgerD);
   if(totalDiscountRounded>0){
     const discForLedgerD = parseFloat((grossForLedgerD - net).toFixed(2));
-    addLedger(date,d.party,'DISCOUNT_GIVEN','Bill#'+bno,discForLedgerD);
-    const expD=load('expense');
-    expD.push({date,desc:'Discount Given on Bill#'+bno+' Party:'+d.party,amount:discForLedgerD,type:'DISCOUNT_GIVEN'});
-    save('expense',expD);
+    // DISCOUNT_GIVEN removed from expense store (already in lower sale base - no double counting)
   }
   if(mode==='CASH'){
     const cash=load('cash');
