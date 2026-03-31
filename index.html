@@ -128,8 +128,6 @@ document.currentScript.parentNode.insertBefore(link, document.currentScript.next
   -webkit-font-smoothing: antialiased;
 }
 
-html { scroll-behavior: smooth; }
-
 body {
   font-family: var(--font-ui);
   font-size: 14px;
@@ -137,6 +135,13 @@ body {
   color: var(--md-on-surface);
   line-height: 1.5;
   overflow-x: hidden;
+  overflow-y: auto;
+  height: 100%;
+}
+
+html {
+  scroll-behavior: smooth;
+  height: 100%;
 }
 
 /* ── TOP APP BAR ── */
@@ -194,6 +199,14 @@ body {
   letter-spacing: .3px;
 }
 .topbar button[onclick="logout()"]:active { background: rgba(255,255,255,.22); }
+/* Topbar scrollable actions row */
+.topbar-actions::-webkit-scrollbar { display: none; }
+.topbar-actions { scrollbar-width: none; -ms-overflow-style: none; }
+/* Compact all topbar buttons on small screens */
+@media (max-width: 420px) {
+  .topbar-actions button { padding: 5px 8px !important; font-size: 11px !important; }
+  .topbar-actions select { padding: 4px 4px !important; font-size: 10px !important; max-width: 72px !important; }
+}
 
 /* Float bill button */
 #floatBillBtn {
@@ -279,7 +292,9 @@ body {
 .content {
   padding: 12px;
   padding-bottom: 76px;
-  min-height: 100vh;
+  min-height: calc(100vh - 60px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── PAGES ── */
@@ -936,7 +951,7 @@ tr[style*="background:#fff5f5"] td {
 
 /* ── RESPONSIVE ── */
 @media (min-width: 480px) {
-  .content { padding: 16px; padding-bottom: 80px; max-width: 520px; margin: 0 auto; }
+  .content { padding: 16px; padding-bottom: 80px; max-width: 520px; margin: 0 auto; min-height: calc(100vh - 60px); }
   .topbar { padding: 0 20px; }
 }
 
@@ -946,6 +961,41 @@ tr[style*="background:#fff5f5"] td {
   .content { padding: 0 !important; padding-bottom: 0 !important; }
   .card { box-shadow: none !important; border: 1px solid #ddd !important; }
 }
+
+/* ── NOTIFICATION STYLES ── */
+.ntab {
+  padding: 7px 16px; border: 1.5px solid var(--md-outline); border-radius: 20px;
+  background: var(--md-surface); color: var(--md-on-surface-variant);
+  font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  font-family: var(--font-ui); transition: all .2s;
+}
+.ntab-active {
+  background: var(--md-on-surface); color: #fff; border-color: var(--md-on-surface);
+}
+.notif-card {
+  background: var(--md-surface); border-radius: 14px;
+  border-left: 4px solid var(--md-outline); padding: 14px;
+  margin-bottom: 10px; box-shadow: var(--md-shadow-sm);
+  transition: all .2s;
+}
+.notif-card.overdue  { border-left-color: #e74c3c; background: #fff8f8; }
+.notif-card.upcoming { border-left-color: #f39c12; background: #fffdf5; }
+.notif-card.jangad   { border-left-color: #3498db; background: #f5faff; }
+.notif-card.lowstock { border-left-color: #8e44ad; background: #fdf5ff; }
+.notif-card.info     { border-left-color: #27ae60; background: #f5fff9; }
+.notif-title { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.notif-sub   { font-size: 12px; color: var(--md-on-surface-muted); margin-bottom: 8px; }
+.notif-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.tone-btn {
+  padding: 9px 8px; border: 1.5px solid var(--md-outline); border-radius: 10px;
+  background: var(--md-surface); color: var(--md-on-surface);
+  font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font-ui);
+  transition: all .2s; text-align: center;
+}
+.tone-btn.tone-active {
+  background: var(--md-on-surface); color: #fff; border-color: var(--md-on-surface);
+}
+
 </style>
 </head>
 <body>
@@ -1184,14 +1234,14 @@ tr[style*="background:#fff5f5"] td {
 </div>
 
 <!-- ════════ MAIN APP ════════ -->
-<div id="mainApp" style="display:none">
+<div id="mainApp" style="display:none;min-height:100vh;overflow-x:hidden">
 
 <div class="topbar">
   <div>
     <h1 style="font-size:22px;font-weight:900;letter-spacing:4px;font-style:italic;background:linear-gradient(90deg,#f9ca24,#f0932b,#eb4d4b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none">MOJ</h1>
     <span id="topUser"></span>
   </div>
-  <div style="display:flex;gap:8px;align-items:center">
+  <div style="display:flex;gap:6px;align-items:center;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;max-width:calc(100vw - 90px);padding-right:4px" class="topbar-actions">
     <!-- Floating Create Bill button — visible when anything is ticked -->
     <button id="floatBillBtn" onclick="openCombinedBillModal()"
       style="display:none;background:linear-gradient(135deg,#27ae60,#2ecc71);border:none;color:#fff;
@@ -1200,7 +1250,10 @@ tr[style*="background:#fff5f5"] td {
       🧾 Bill <span id="floatBillCount" style="background:rgba(255,255,255,.3);border-radius:10px;padding:1px 5px;font-size:10px"></span>
     </button>
     <button onclick="openLangModal()" style="background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35);color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-ui);letter-spacing:.3px" id="topLangBtn">🌐 EN</button>
-    <button onclick="logout()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 10px;border-radius:6px;font-size:12px">Logout</button>
+    <button onclick="showPage('notifications');updateNotifBadge()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 10px;border-radius:20px;font-size:14px;cursor:pointer;position:relative;flex-shrink:0" title="Notifications">
+      🔔<span id="notifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;min-width:16px" id="notifBadge">0</span>
+    </button>
+    <button onclick="logout()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;white-space:nowrap;flex-shrink:0">Logout</button>
   </div>
 </div>
 
@@ -1208,7 +1261,7 @@ tr[style*="background:#fff5f5"] td {
 <div class="content">
 
   <!-- DASHBOARD -->
-  <div id="pg_dashboard" class="page active">
+  <div id="pg_dashboard" class="page active" style="display:block">
     
 <div class="card">
 <h3>Capital / Drawings</h3>
@@ -1466,6 +1519,11 @@ Setup Opening Capital Structure
   <div id="pg_more" class="page">
     <div class="card">
       <h3>More Options</h3>
+      <button onclick="showPage('notifications');updateNotifBadge()"
+        style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;margin-bottom:10px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:700;background:linear-gradient(135deg,#1a1f2e,#252d42);color:#fff">
+        <span>🔔 Notifications &amp; Reminders</span>
+        <span id="moreNotifBadge" style="background:#e74c3c;color:#fff;border-radius:20px;padding:2px 10px;font-size:12px;display:none">0</span>
+      </button>
       <button class="btn btn-blue btn-full" style="margin-bottom:8px" onclick="showPage('purchase')">&#x1F6D2; Purchase</button>
       <button class="btn btn-orange btn-full" style="margin-bottom:8px" onclick="showPage('cashbank')">&#x1F4B5; Cash &amp; Bank</button>
       <button class="btn btn-blue btn-full" style="margin-bottom:8px" onclick="showPage('ledger')">&#x1F4D2; Ledger &amp; Outstanding</button>
@@ -1841,6 +1899,40 @@ Setup Opening Capital Structure
     </div>
   </div>
 
+
+  <!-- ════ NOTIFICATIONS & REMINDERS PAGE ════ -->
+  <div id="pg_notifications" class="page" style="display:none">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1a1f2e,#252d42);border-radius:16px;padding:16px;margin-bottom:12px;color:#fff">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-size:20px;font-weight:900;letter-spacing:1px">🔔 Notifications</div>
+        <button onclick="refreshNotifications()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;cursor:pointer;font-weight:600">↻ Refresh</button>
+      </div>
+      <div style="font-size:12px;color:rgba(255,255,255,.6)">Payment reminders, overdue bills & alerts</div>
+    </div>
+
+    <!-- TABS -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px">
+      <button id="ntab_all"      onclick="switchNotifTab('all')"      class="ntab ntab-active">All</button>
+      <button id="ntab_overdue"  onclick="switchNotifTab('overdue')"  class="ntab">🔴 Overdue</button>
+      <button id="ntab_upcoming" onclick="switchNotifTab('upcoming')" class="ntab">🟡 Due Soon</button>
+      <button id="ntab_jangad"   onclick="switchNotifTab('jangad')"   class="ntab">📦 Jangad</button>
+      <button id="ntab_lowstock" onclick="switchNotifTab('lowstock')" class="ntab">📦 Low Stock</button>
+    </div>
+
+    <!-- Notification list -->
+    <div id="notifList"></div>
+
+    <!-- Empty state -->
+    <div id="notifEmpty" style="display:none;text-align:center;padding:48px 24px;color:var(--md-on-surface-muted)">
+      <div style="font-size:48px;margin-bottom:12px">🎉</div>
+      <div style="font-size:17px;font-weight:700;margin-bottom:6px">All Clear!</div>
+      <div style="font-size:13px">No pending alerts for now.</div>
+    </div>
+
+  </div>
+
 </div><!-- end content -->
 
 <!-- BOTTOM NAV -->
@@ -1866,6 +1958,56 @@ Setup Opening Capital Structure
     More
   </a>
 </nav>
+
+  <!-- ════ PAYMENT REMINDER MODAL ════ -->
+  <div id="payReminderModal" class="modal">
+    <div class="modal-card" style="max-height:92vh;overflow-y:auto">
+      <button class="modal-close" onclick="closeModal('payReminderModal')">×</button>
+      <h3 style="margin-bottom:4px">💬 Send Payment Reminder</h3>
+      <div style="font-size:12px;color:var(--md-on-surface-muted);margin-bottom:14px">WhatsApp reminder with bill details</div>
+
+      <!-- Party info strip -->
+      <div id="prmPartyInfo" style="background:var(--md-surface-variant);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px"></div>
+
+      <!-- Tone selector -->
+      <div class="form-group">
+        <label>🎯 Message Tone</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+          <button id="tone_polite"    onclick="selectTone('polite')"    class="tone-btn tone-active">🙏 Polite</button>
+          <button id="tone_friendly"  onclick="selectTone('friendly')"  class="tone-btn">😊 Friendly</button>
+          <button id="tone_firm"      onclick="selectTone('firm')"      class="tone-btn">📋 Firm</button>
+          <button id="tone_urgent"    onclick="selectTone('urgent')"    class="tone-btn">⚠️ Urgent</button>
+        </div>
+      </div>
+
+      <!-- Language selector -->
+      <div class="form-group">
+        <label>🌐 Message Language</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:4px">
+          <button id="rlang_en" onclick="selectRLang('en')" class="tone-btn tone-active" style="font-size:12px">🇬🇧 English</button>
+          <button id="rlang_hi" onclick="selectRLang('hi')" class="tone-btn" style="font-size:12px">🇮🇳 Hindi</button>
+          <button id="rlang_gu" onclick="selectRLang('gu')" class="tone-btn" style="font-size:12px">🇮🇳 Gujarati</button>
+        </div>
+      </div>
+
+      <!-- Custom note -->
+      <div class="form-group">
+        <label>✏️ Add Personal Note (Optional)</label>
+        <textarea id="prmCustomNote" placeholder="e.g. Please pay before festival... (add anything)" rows="2"
+          style="width:100%;padding:10px 12px;border:1.5px solid var(--md-outline);border-radius:10px;font-size:13px;font-family:var(--font-ui);resize:none" oninput="buildReminderPreview()"></textarea>
+      </div>
+
+      <!-- Preview -->
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--md-on-surface-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Message Preview</label>
+        <div id="prmPreview" style="background:#e7ffd9;border-radius:12px;padding:12px;font-size:12.5px;white-space:pre-wrap;font-family:inherit;border:1px solid #c3e6cb;max-height:240px;overflow-y:auto;line-height:1.5"></div>
+      </div>
+
+      <button class="btn btn-green btn-full" onclick="sendPaymentReminder()" style="gap:8px">
+        💬 Send on WhatsApp
+      </button>
+    </div>
+  </div>
 
 <!-- Hidden container used to render PDF content off-screen -->
 <div id="pdfRenderZone" style="position:fixed;left:-9999px;top:0;width:210mm;background:#fff;font-family:Arial,sans-serif;font-size:12px;padding:12px;z-index:-1"></div>
@@ -2560,16 +2702,22 @@ function logout(){
 // ════════════════════════════════════════
 //  NAVIGATION
 // ════════════════════════════════════════
-const PAGES=['dashboard','products','parties','sales','purchase','cashbank','ledger','reports','returns','incexp','more','jangad','dc','gst','bankrecon'];
+const PAGES=['dashboard','products','parties','sales','purchase','cashbank','ledger','reports','returns','incexp','more','jangad','dc','gst','bankrecon','notifications'];
 
 function showPage(name){
   PAGES.forEach(p=>{
     const el=document.getElementById('pg_'+p);
-    if(el) el.style.display=p===name?'block':'none';
+    if(el){
+      el.style.display=p===name?'block':'none';
+      el.classList.toggle('active', p===name);
+    }
   });
   document.querySelectorAll('.bottomnav a').forEach(a=>a.classList.remove('active'));
   const nav=document.getElementById('nav_'+name);
   if(nav) nav.classList.add('active');
+  // Scroll content to top on page switch
+  const content=document.querySelector('.content');
+  if(content) content.scrollTop=0;
   // refresh page data
   if(name==='dashboard') loadDashboard();
   if(name==='products')  renderProducts();
@@ -2967,12 +3115,20 @@ function saveSale(){
   });
   saveShared('products',products);
 
-  // Ledger: SALE entry — use NET amount (post discount + GST)
-  // Trade discount is already reflected in the net bill amount.
-  // For party ledger: we record net so party owes exactly what's on the bill.
-  addLedger(date,party,'SALE',String(bno),net);
-  // NOTE: We do NOT add DISCOUNT_GIVEN to expense store — the discount is
-  // already captured in the lower sale base. Adding it to expense = double counting.
+  // Ledger: SALE entry creates receivable (debtor) — GROSS amount (before discount) + GST
+  // This ensures DISCOUNT_GIVEN properly reduces receivable to the net billed amount
+  const grossForLedger = totalDiscount > 0 ? Math.round(grossBeforeDisc*(1+g.rate)) : net;
+  addLedger(date,party,'SALE',String(bno),grossForLedger);
+  // If discount given → record discount expense in ledger AND expense table
+  if(totalDiscount>0){
+    // Discount in ledger = difference between gross ledger and net (includes GST proportioning)
+    const discForLedger = parseFloat((grossForLedger - net).toFixed(2));
+    addLedger(date,party,'DISCOUNT_GIVEN','Bill#'+bno,discForLedger);
+    // Also save to expense store so it appears in P&L
+    const expD=load('expense');
+    expD.push({date,desc:'Discount Given on Bill#'+bno+' Party:'+party,amount:discForLedger,type:'DISCOUNT_GIVEN'});
+    save('expense',expD);
+  }
 
   if(mode==='CASH'){
     const cash=load('cash');
@@ -4229,8 +4385,6 @@ function generateReport(){
     if(i.type==='BATAV_RECEIVED')    totalBatavReceived+=i.amount;
   });
   // Exclude BATAV and DISCOUNT_GIVEN from totalExp — they are already counted separately below
-  // Note: DISCOUNT_GIVEN excluded from expenses (trade discount = already in net sale)
-  // BATAV excluded separately (shown as its own line in P&L)
   expense.forEach(e=>{
     if(e.type!=='BATAV' && e.type!=='DISCOUNT_GIVEN') totalExp+=e.amount;
   });
@@ -4248,10 +4402,7 @@ function generateReport(){
   // Gross Profit = Sales - (Opening Stock + Purchases - Closing Stock)
   const costOfGoods = openingStockVal + netPur - stockVal;
   const grossProfit = netSale - costOfGoods;
-  const netProfit   = grossProfit + totalInc - totalExp - totalBatav;
-  // NOTE: Trade discount (totalDiscountGiven) is NOT subtracted here —
-  // it is already captured in the lower sale base amount (s.base = post-discount).
-  // Subtracting it again would be double-counting → Balance Sheet would fail.
+  const netProfit   = grossProfit + totalInc - totalExp - totalDiscountGiven - totalBatav;
 
   // Capital — manual input field OR auto-calculated from ledger
   const manualCapital  = loadCapital();
@@ -4360,13 +4511,10 @@ function generateReport(){
     <div class="report-section">
       ${divider('📋 PROFIT & LOSS ACCOUNT')}
       ${subhead('Dr Side (Expenses)')}
+      ${totalDiscountGiven>0?row('Discount Given (Trade Discount)', totalDiscountGiven):''}
       ${totalBatav>0?row('Batav / Settlement Write-off', totalBatav):''}
       ${row('Other Expenses', totalExp-totalBatav>0?totalExp-totalBatav:totalExp)}
       ${netProfit>=0?'':row('NET LOSS', Math.abs(netProfit),'loss',true)}
-      ${totalDiscountGiven>0?`<div style="background:#f8f9fa;border-left:3px solid #6c757d;padding:6px 10px;font-size:11px;color:#6c757d;margin:4px 0;border-radius:0 4px 4px 0">
-        ℹ️ <b>Trade Discount Memo:</b> ₹${totalDiscountGiven.toFixed(2)} discount was given on bills.<br>
-        This is already included in the lower Net Sales figure (₹${netSale.toFixed(2)}) — not a separate P&L expense.
-      </div>`:''}
       ${subhead('Cr Side (Income)')}
       ${row('Gross Profit b/d', grossProfit)}
       ${totalDiscountReceived>0?row('Discount Received (from Suppliers)', totalDiscountReceived):''}
@@ -5165,7 +5313,10 @@ function saveConvert(){
   addLedger(date,j.party,'SALE',String(bno),grossForLedgerJ);
   if(totalDiscountRounded>0){
     const discForLedgerJ = parseFloat((grossForLedgerJ - net).toFixed(2));
-    // DISCOUNT_GIVEN removed from expense store (already in lower sale base - no double counting)
+    addLedger(date,j.party,'DISCOUNT_GIVEN','Bill#'+bno,discForLedgerJ);
+    const expD=load('expense');
+    expD.push({date,desc:'Discount Given on Bill#'+bno+' Party:'+j.party,amount:discForLedgerJ,type:'DISCOUNT_GIVEN'});
+    save('expense',expD);
   }
   if(mode==='CASH'){
     const cash=load('cash');
@@ -5906,7 +6057,10 @@ function saveDCConvert(){
   addLedger(date,d.party,'SALE',String(bno),grossForLedgerD);
   if(totalDiscountRounded>0){
     const discForLedgerD = parseFloat((grossForLedgerD - net).toFixed(2));
-    // DISCOUNT_GIVEN removed from expense store (already in lower sale base - no double counting)
+    addLedger(date,d.party,'DISCOUNT_GIVEN','Bill#'+bno,discForLedgerD);
+    const expD=load('expense');
+    expD.push({date,desc:'Discount Given on Bill#'+bno+' Party:'+d.party,amount:discForLedgerD,type:'DISCOUNT_GIVEN'});
+    save('expense',expD);
   }
   if(mode==='CASH'){
     const cash=load('cash');
@@ -10579,5 +10733,460 @@ function deleteMyCat(index){
     </button>
   </div>
 </div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  NOTIFICATIONS & PAYMENT REMINDER SYSTEM
+// ══════════════════════════════════════════════════════
+
+let _currentNotifTab = 'all';
+let _prmBills = [];     // bills for current reminder
+let _prmParty = '';
+let _prmTone  = 'polite';
+let _prmLang  = 'en';
+
+// ── Reminder message templates ──────────────────────
+const REMINDER_TEMPLATES = {
+  polite: {
+    en: (co, party, bills, total, note) => {
+      let msg = `🙏 *Greetings from ${co}*\n\n`;
+      msg += `Dear *${party}*,\n\n`;
+      msg += `We hope you are doing well. This is a gentle reminder regarding your outstanding payment with us.\n\n`;
+      msg += `📋 *OUTSTANDING BILLS:*\n${bills}\n`;
+      msg += `💰 *Total Due: ₹${total}*\n\n`;
+      if(note) msg += `📝 ${note}\n\n`;
+      msg += `We kindly request you to clear the above amount at your earliest convenience.\n\n`;
+      msg += `Thank you for your continued trust and business. 🙏\n\n`;
+      msg += `_${co}_`;
+      return msg;
+    },
+    hi: (co, party, bills, total, note) => {
+      let msg = `🙏 *${co} की तरफ से नमस्ते*\n\n`;
+      msg += `प्रिय *${party}*,\n\n`;
+      msg += `आशा है आप स्वस्थ हैं। यह आपके बकाया भुगतान के संबंध में एक विनम्र अनुस्मारक है।\n\n`;
+      msg += `📋 *बकाया बिल:*\n${bills}\n`;
+      msg += `💰 *कुल बकाया: ₹${total}*\n\n`;
+      if(note) msg += `📝 ${note}\n\n`;
+      msg += `कृपया जल्द से जल्द भुगतान करने की कृपा करें।\n\n`;
+      msg += `आपके व्यापार के लिए धन्यवाद 🙏\n_${co}_`;
+      return msg;
+    },
+    gu: (co, party, bills, total, note) => {
+      let msg = `🙏 *${co} તરફથી નમસ્તે*\n\n`;
+      msg += `પ્રિય *${party}*,\n\n`;
+      msg += `આશા છે આप સ્વસ્થ છો. આ આपની બાકી ચુકવણી અંગે એક વિનમ્ર રીminder છે.\n\n`;
+      msg += `📋 *બાકી બિલ:*\n${bills}\n`;
+      msg += `💰 *કુલ બાકી: ₹${total}*\n\n`;
+      if(note) msg += `📝 ${note}\n\n`;
+      msg += `કૃપા કરી વહેલી તકે ચૂકવણી કરવા વિનંતી છે.\n\n`;
+      msg += `આपના ব্যবসা માટે આভાર 🙏\n_${co}_`;
+      return msg;
+    }
+  },
+  friendly: {
+    en: (co, party, bills, total, note) => {
+      let msg = `😊 *Hi ${party}!*\n\n`;
+      msg += `Hope you're doing great! Just a friendly reminder from *${co}* about your pending payment.\n\n`;
+      msg += `📋 *Bills Pending:*\n${bills}\n`;
+      msg += `💰 *Total: ₹${total}*\n\n`;
+      if(note) msg += `📝 ${note}\n\n`;
+      msg += `When you get a chance, please do clear this. Thanks so much! 😊\n\n`;
+      msg += `_- Team ${co}_`;
+      return msg;
+    },
+    hi: (co, party, bills, total, note) => {
+      let msg = `😊 *नमस्ते ${party}!*\n\n`;
+      msg += `*${co}* की तरफ से आपको याद दिलाना था कि कुछ बिल बाकी हैं।\n\n`;
+      msg += `📋 *बकाया बिल:*\n${bills}\n`;
+      msg += `💰 *कुल: ₹${total}*\n\n`;
+      if(note) msg += `📝 ${note}\n\n`;
+      msg += `जब सुविधा हो, भुगतान कर दें। शुक्रिया! 😊\n_${co}_`;
+      return msg;
+    },
+    gu: (co, party, bills, total, note) => {
+      let msg = `😊 *નમસ્તે ${party}!*\n\n`;
+      msg += `*${co}* તરફથી, આपना કેટલાk bill pending છે.\n\n`;
+      msg += `📋 *Pending bills:*\n${bills}\n`;
+      msg += `💰 *કુલ: ₹${total}*\n\n`;
+      if(note) msg += `📝 ${note}\n\n`;
+      msg += `અનुकूળ time-এ ચૂkvaणी kari lejo. Aabhar! 😊\n_${co}_`;
+      return msg;
+    }
+  },
+  firm: {
+    en: (co, party, bills, total, note) => {
+      let msg = `📋 *PAYMENT REMINDER — ${co.toUpperCase()}*\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `Party  : *${party}*\n`;
+      msg += `Status : *PAYMENT PENDING*\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `*OUTSTANDING BILLS:*\n${bills}\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `*TOTAL DUE : ₹${total}*\n\n`;
+      if(note) msg += `Note: ${note}\n\n`;
+      msg += `Please arrange payment immediately to avoid any inconvenience.\n\n`;
+      msg += `For queries contact us. Thank you.\n_${co}_`;
+      return msg;
+    },
+    hi: (co, party, bills, total, note) => {
+      let msg = `📋 *भुगतान अनुस्मारक — ${co.toUpperCase()}*\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `पार्टी  : *${party}*\n`;
+      msg += `स्थिति : *भुगतान बाकी*\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `*बकाया बिल:*\n${bills}\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `*कुल बकाया : ₹${total}*\n\n`;
+      if(note) msg += `नोट: ${note}\n\n`;
+      msg += `कृपया तुरंत भुगतान की व्यवस्था करें।\n_${co}_`;
+      return msg;
+    },
+    gu: (co, party, bills, total, note) => {
+      let msg = `📋 *ચૂkvaणी Reminder — ${co.toUpperCase()}*\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `Party  : *${party}*\n`;
+      msg += `Status : *ચૂkvaणी Pending*\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `*Pending Bills:*\n${bills}\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `*કુל Baaki : ₹${total}*\n\n`;
+      if(note) msg += `Note: ${note}\n\n`;
+      msg += `krupaya taatkal chukvani karva vinanti.\n_${co}_`;
+      return msg;
+    }
+  },
+  urgent: {
+    en: (co, party, bills, total, note) => {
+      let msg = `⚠️ *URGENT: PAYMENT OVERDUE — ${co.toUpperCase()}*\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `Dear *${party}*,\n\n`;
+      msg += `Your payment is *OVERDUE*. Please clear immediately to avoid legal action.\n\n`;
+      msg += `⚠️ *OVERDUE BILLS:*\n${bills}\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `🚨 *TOTAL OVERDUE : ₹${total}*\n\n`;
+      if(note) msg += `⚠️ ${note}\n\n`;
+      msg += `Interest may be charged as per terms. Kindly pay IMMEDIATELY.\n\n`;
+      msg += `_${co}_ — Legal action may follow if payment is not received.`;
+      return msg;
+    },
+    hi: (co, party, bills, total, note) => {
+      let msg = `⚠️ *अत्यावश्यक: भुगतान अतिदेय — ${co.toUpperCase()}*\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `प्रिय *${party}*,\n\n`;
+      msg += `आपका भुगतान *अतिदेय* है। कानूनी कार्रवाई से बचने के लिए तुरंत चुकाएं।\n\n`;
+      msg += `⚠️ *अतिदेय बिल:*\n${bills}\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `🚨 *कुल अतिदेय : ₹${total}*\n\n`;
+      if(note) msg += `⚠️ ${note}\n\n`;
+      msg += `तुरंत भुगतान करें अन्यथा ब्याज लगाया जाएगा।\n_${co}_`;
+      return msg;
+    },
+    gu: (co, party, bills, total, note) => {
+      let msg = `⚠️ *URGENT: Chukvani Overdue — ${co.toUpperCase()}*\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `*${party}*,\n\n`;
+      msg += `Tamari chukvani *OVERDUE* che. Legal action talna taatkal chukvani karo.\n\n`;
+      msg += `⚠️ *Overdue Bills:*\n${bills}\n`;
+      msg += `${'─'.repeat(28)}\n`;
+      msg += `🚨 *Kul Baaki : ₹${total}*\n\n`;
+      if(note) msg += `⚠️ ${note}\n\n`;
+      msg += `Taatkal chukvani karo.\n_${co}_`;
+      return msg;
+    }
+  }
+};
+
+// ── Build notifications list ──────────────────────────
+function getAllNotifications() {
+  const today     = todayDMY();
+  const sales     = load('sales');
+  const jangads   = load('jangads') || [];
+  const products  = loadShared('products') || [];
+  const notifs    = [];
+
+  // ① OVERDUE credit bills
+  sales.filter(s => s.mode === 'CREDIT' && s.dueDate && isDateBefore(s.dueDate, today))
+    .forEach(s => {
+      const daysOverdue = dateDiffDays(s.dueDate, today);
+      notifs.push({
+        type: 'overdue', priority: 1,
+        icon: '🔴', title: `Bill #${s.billNo} OVERDUE — ${s.party}`,
+        sub:  `Due: ${s.dueDate} • ${daysOverdue} days overdue • ₹${s.total.toFixed(2)}`,
+        amount: s.total, party: s.party, bill: s,
+        actions: [
+          { label: '💬 Send Reminder', fn: `openReminderForParty('${s.party.replace(/'/g,"\'")}','overdue')` },
+          { label: '✅ Mark Paid',     fn: `markBillPaid(${s.billNo})` },
+          { label: '🖨 View Bill',     fn: `printBillByNo(${s.billNo})` },
+        ]
+      });
+    });
+
+  // ② Due in next 7 days
+  sales.filter(s => s.mode === 'CREDIT' && s.dueDate && !isDateBefore(s.dueDate, today))
+    .forEach(s => {
+      const daysLeft = dateDiffDays(today, s.dueDate);
+      if(daysLeft <= 7) {
+        notifs.push({
+          type: 'upcoming', priority: 2,
+          icon: '🟡', title: `Bill #${s.billNo} Due Soon — ${s.party}`,
+          sub:  `Due: ${s.dueDate} • ${daysLeft} day${daysLeft!==1?'s':''} remaining • ₹${s.total.toFixed(2)}`,
+          amount: s.total, party: s.party, bill: s,
+          actions: [
+            { label: '💬 Send Reminder', fn: `openReminderForParty('${s.party.replace(/'/g,"\'")}','upcoming')` },
+            { label: '🖨 View Bill',     fn: `printBillByNo(${s.billNo})` },
+          ]
+        });
+      }
+    });
+
+  // ③ Pending Jangad (not converted)
+  jangads.filter(j => j.status === 'PENDING' || j.status === 'IN_DC').forEach(j => {
+    const totalAmt = j.items.reduce((s,it)=>s+it.qtySent*it.price, 0);
+    const pendingQty = j.items.reduce((s,it)=>s+it.qtyRemaining, 0);
+    const daysSent = dateDiffDays(j.date, today);
+    if(daysSent > 2) { // only show if older than 2 days
+      notifs.push({
+        type: 'jangad', priority: 3,
+        icon: '📦', title: `Jangad #${j.jangadNo} Pending — ${j.party}`,
+        sub:  `Sent: ${j.date} • ${daysSent} days ago • ${pendingQty} pcs pending • ₹${totalAmt.toFixed(2)}`,
+        amount: totalAmt, party: j.party,
+        actions: [
+          { label: '💬 Remind Party',  fn: `shareJangadWhatsApp(${j.jangadNo})` },
+          { label: '📦 View Jangad',   fn: `showPage('jangad')` },
+        ]
+      });
+    }
+  });
+
+  // ④ Low Stock
+  products.filter(p => p.qty <= 10 && p.qty >= 0).forEach(p => {
+    notifs.push({
+      type: 'lowstock', priority: 4,
+      icon: '📉', title: `Low Stock: ${p.name}`,
+      sub:  `Only ${p.qty} ${p.unit||'pcs'} remaining`,
+      actions: [
+        { label: '📦 Go to Products', fn: `showPage('products')` },
+      ]
+    });
+  });
+
+  // Sort by priority then by amount desc
+  notifs.sort((a,b) => a.priority - b.priority || b.amount - a.amount);
+  return notifs;
+}
+
+// ── Helper: date diff in days (DD-MM-YYYY format) ──
+function dateDiffDays(d1str, d2str) {
+  function parseD(s) {
+    if(!s) return new Date();
+    const [dd,mm,yyyy] = s.split('-').map(Number);
+    return new Date(yyyy, mm-1, dd);
+  }
+  const diff = parseD(d2str) - parseD(d1str);
+  return Math.round(diff / 86400000);
+}
+
+// ── Render notifications ──────────────────────────────
+function renderNotifications(tab) {
+  const all = getAllNotifications();
+  const filtered = tab === 'all' ? all : all.filter(n => n.type === tab);
+
+  const list = document.getElementById('notifList');
+  const empty = document.getElementById('notifEmpty');
+
+  if(!filtered.length) {
+    if(list) list.innerHTML = '';
+    if(empty) empty.style.display = 'block';
+    return;
+  }
+  if(empty) empty.style.display = 'none';
+
+  list.innerHTML = filtered.map(n => `
+    <div class="notif-card ${n.type}">
+      <div class="notif-title">${n.icon} ${n.title}</div>
+      <div class="notif-sub">${n.sub}</div>
+      <div class="notif-actions">
+        ${n.actions.map(a =>
+          `<button onclick="${a.fn}" class="btn btn-sm"
+            style="padding:6px 12px;font-size:12px;border-radius:20px;font-weight:600">${a.label}</button>`
+        ).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function refreshNotifications() {
+  renderNotifications(_currentNotifTab);
+  updateNotifBadge();
+  mdToast && mdToast('Notifications refreshed!');
+}
+
+function switchNotifTab(tab) {
+  _currentNotifTab = tab;
+  document.querySelectorAll('.ntab').forEach(b => b.classList.remove('ntab-active'));
+  const active = document.getElementById('ntab_' + tab);
+  if(active) active.classList.add('ntab-active');
+  renderNotifications(tab);
+}
+
+function updateNotifBadge() {
+  const count = getAllNotifications().filter(n =>
+    n.type === 'overdue' || n.type === 'upcoming'
+  ).length;
+
+  ['notifBadge','moreNotifBadge'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(count > 0) {
+      el.textContent = count > 9 ? '9+' : count;
+      el.style.display = 'flex';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+}
+
+// Hook into showPage to load notifications when opened
+(function() {
+  const _origShowPageNotif = showPage;
+  showPage = function(name) {
+    _origShowPageNotif(name);
+    if(name === 'notifications') {
+      renderNotifications(_currentNotifTab);
+      updateNotifBadge();
+    }
+  };
+})();
+
+// ── Payment Reminder ──────────────────────────────────
+// Opens reminder modal for a specific party
+// Collects ALL their pending credit bills
+function openReminderForParty(partyName, context) {
+  const sales = load('sales');
+  const today = todayDMY();
+
+  // Get all pending credit bills for this party
+  _prmBills = sales.filter(s =>
+    s.party === partyName && s.mode === 'CREDIT'
+  );
+
+  if(!_prmBills.length) {
+    mdToast && mdToast('No pending credit bills for ' + partyName);
+    return;
+  }
+
+  _prmParty = partyName;
+  _prmTone  = context === 'overdue' ? 'urgent' : 'polite';
+  _prmLang  = (typeof getLang === 'function') ? getLang() : 'en';
+
+  // Update tone buttons
+  ['polite','friendly','firm','urgent'].forEach(t => {
+    const b = document.getElementById('tone_'+t);
+    if(b) b.classList.toggle('tone-active', t === _prmTone);
+  });
+  ['en','hi','gu'].forEach(l => {
+    const b = document.getElementById('rlang_'+l);
+    if(b) b.classList.toggle('tone-active', l === _prmLang);
+  });
+
+  // Party info
+  const parties = load('parties');
+  const party   = parties.find(p => p.name === partyName) || {};
+  const totalDue = _prmBills.reduce((s,b) => s+b.total, 0);
+  const overdueCount = _prmBills.filter(b => b.dueDate && isDateBefore(b.dueDate, today)).length;
+
+  const prmInfo = document.getElementById('prmPartyInfo');
+  if(prmInfo) prmInfo.innerHTML =
+    `<div style="font-weight:700;font-size:15px;margin-bottom:4px">👤 ${partyName}</div>` +
+    (party.mob ? `<div style="font-size:12px;color:var(--md-on-surface-muted)">📞 ${party.mob}</div>` : '') +
+    `<div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+      <span style="background:#fdecea;color:#c0392b;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700">
+        💰 Total Due: ₹${totalDue.toFixed(2)}
+      </span>
+      <span style="background:#fff3cd;color:#856404;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">
+        📋 ${_prmBills.length} Bill${_prmBills.length>1?'s':''} Pending
+      </span>
+      ${overdueCount > 0 ? `<span style="background:#e74c3c;color:#fff;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700">⚠️ ${overdueCount} Overdue</span>` : ''}
+    </div>`;
+
+  // Clear note
+  const noteEl = document.getElementById('prmCustomNote');
+  if(noteEl) noteEl.value = '';
+
+  buildReminderPreview();
+  openModal('payReminderModal');
+}
+
+function selectTone(tone) {
+  _prmTone = tone;
+  ['polite','friendly','firm','urgent'].forEach(t => {
+    const b = document.getElementById('tone_'+t);
+    if(b) b.classList.toggle('tone-active', t === tone);
+  });
+  buildReminderPreview();
+}
+
+function selectRLang(lang) {
+  _prmLang = lang;
+  ['en','hi','gu'].forEach(l => {
+    const b = document.getElementById('rlang_'+l);
+    if(b) b.classList.toggle('tone-active', l === lang);
+  });
+  buildReminderPreview();
+}
+
+function buildReminderPreview() {
+  if(!_prmBills.length) return;
+  const today = todayDMY();
+  const co    = getMyCompanyName ? getMyCompanyName() : CU.replace(/_/g,' ');
+  const note  = (document.getElementById('prmCustomNote')||{}).value || '';
+
+  // Build bills list string
+  const billsStr = _prmBills.map(b => {
+    const overdue = b.dueDate && isDateBefore(b.dueDate, today);
+    return `  • Bill #${b.billNo} | ${b.date}${b.dueDate?' | Due:'+b.dueDate:''} | *₹${b.total.toFixed(2)}*${overdue?' ⚠️OVERDUE':''}`;
+  }).join('\n');
+
+  const total = _prmBills.reduce((s,b) => s+b.total, 0).toFixed(2);
+
+  // Get template
+  const templates = REMINDER_TEMPLATES[_prmTone] || REMINDER_TEMPLATES.polite;
+  const langFn    = templates[_prmLang] || templates.en;
+  const msg       = langFn(co, _prmParty, billsStr, total, note);
+
+  const prev = document.getElementById('prmPreview');
+  if(prev) prev.textContent = msg;
+}
+
+function sendPaymentReminder() {
+  if(!_prmBills.length || !_prmParty) return;
+
+  const parties = load('parties');
+  const party   = parties.find(p => p.name === _prmParty) || {};
+  const mob     = (party.mob || '').replace(/\D/g,'');
+
+  const prev = document.getElementById('prmPreview');
+  const msg  = prev ? prev.textContent : '';
+
+  const waUrl = `https://wa.me/${mob ? '91'+mob : ''}?text=${encodeURIComponent(msg)}`;
+  window.open(waUrl, '_blank');
+  closeModal('payReminderModal');
+
+  // Log the reminder
+  const remLog = JSON.parse(localStorage.getItem(CU+'_reminders') || '[]');
+  remLog.push({ party: _prmParty, date: todayDMY(), tone: _prmTone, lang: _prmLang });
+  localStorage.setItem(CU+'_reminders', JSON.stringify(remLog));
+
+  mdToast && mdToast('✅ Reminder sent to ' + _prmParty + '!');
+}
+
+// ── Init on page load ──────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(updateNotifBadge, 1500);
+  // Refresh badge every 5 minutes
+  setInterval(updateNotifBadge, 5 * 60 * 1000);
+});
+</script>
+
 </body>
 </html>
